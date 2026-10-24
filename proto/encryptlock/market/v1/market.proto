@@ -1,0 +1,238 @@
+syntax = "proto3";
+package encryptlock.market.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "google/api/annotations.proto";
+
+option go_package = "encryptlock/lockkeeper/x/market/types";
+
+// The market (white paper, section 9; EncryptLock_trocas_USDC.md): offers to
+// sell or buy LOCK for USDC on Polygon, without anyone holding other people's
+// money.
+//
+// A trade always goes the same way: the LOCK sit in this module; the buyer
+// locks the USDC on Polygon in the swap vault for the seller's 0x address
+// with the hash of a secret, then shows the secret, which pays the seller.
+// Only when the LockKeepers see that payment on Polygon does this module give
+// the LOCK to the buyer. The seller never risks anything and can be offline.
+//
+// The LOCK seller pays the 0,25% swap fee, in LOCK, split like every fee.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // PlaceOffer publishes an offer. A sell offer locks amount + fee here.
+  rpc PlaceOffer(MsgPlaceOffer) returns (MsgPlaceOfferResponse);
+  // CancelOffer takes an open offer down (a sell offer gives the LOCK back).
+  rpc CancelOffer(MsgCancelOffer) returns (MsgCancelOfferResponse);
+  // TakeOffer accepts someone else's offer and reserves it for the payment.
+  rpc TakeOffer(MsgTakeOffer) returns (MsgTakeOfferResponse);
+  // ApproveOffer: the seller's second device lets a sell offer be taken
+  // (an account with a second device sells only with its approval, like a
+  // transfer to a new contact).
+  rpc ApproveOffer(MsgApproveOffer) returns (MsgApproveOfferResponse);
+}
+
+enum Side {
+  SIDE_UNSPECIFIED = 0;
+  // The maker sells LOCK and wants USDC.
+  SIDE_SELL = 1;
+  // The maker buys LOCK and pays USDC.
+  SIDE_BUY = 2;
+}
+
+message MsgPlaceOffer {
+  option (cosmos.msg.v1.signer) = "maker";
+  option (amino.name) = "encryptlock/market/MsgPlaceOffer";
+
+  string maker = 1;
+  Side side = 2;
+  // lock: amount of LOCK, in lockunit.
+  uint64 lock = 3;
+  // usdc: total price in USDC units (6 decimals).
+  uint64 usdc = 4;
+  // polygon: the maker's 0x address (where a seller receives the USDC, or
+  // where a buyer pays from).
+  string polygon = 5;
+  // hash: buy offers only, sha256 of the buyer's secret (32 bytes).
+  bytes hash = 6;
+  // expires_at: Unix seconds; 0 = until canceled.
+  int64 expires_at = 7;
+}
+
+message MsgPlaceOfferResponse {
+  uint64 id = 1;
+}
+
+message MsgCancelOffer {
+  option (cosmos.msg.v1.signer) = "maker";
+  option (amino.name) = "encryptlock/market/MsgCancelOffer";
+
+  string maker = 1;
+  uint64 id = 2;
+}
+
+message MsgCancelOfferResponse {}
+
+message MsgTakeOffer {
+  option (cosmos.msg.v1.signer) = "taker";
+  option (amino.name) = "encryptlock/market/MsgTakeOffer";
+
+  string taker = 1;
+  uint64 id = 2;
+  // polygon: the taker's 0x address.
+  string polygon = 3;
+  // hash: when taking a sell offer (the taker is the buyer), sha256 of the
+  // buyer's secret.
+  bytes hash = 4;
+}
+
+message MsgTakeOfferResponse {
+  uint64 trade_id = 1;
+}
+
+message MsgApproveOffer {
+  option (cosmos.msg.v1.signer) = "device";
+  option (amino.name) = "encryptlock/market/MsgApproveOffer";
+
+  // device: the seller's second device.
+  string device = 1;
+  uint64 id = 2;
+}
+
+message MsgApproveOfferResponse {}
+
+message Offer {
+  uint64 id = 1;
+  string maker = 2;
+  Side side = 3;
+  uint64 lock = 4;
+  uint64 usdc = 5;
+  string polygon = 6;
+  bytes hash = 7;
+  int64 created_at = 8;
+  int64 expires_at = 9;
+  // trade_id: the trade it is reserved for (0 = open).
+  uint64 trade_id = 10;
+  // awaiting_approval: a sell offer of an account with a second device,
+  // not takeable until that device approves it.
+  bool awaiting_approval = 11;
+}
+
+// A trade waiting for the USDC payment on Polygon.
+message Trade {
+  uint64 id = 1;
+  uint64 offer_id = 2;
+  string seller = 3;
+  string buyer = 4;
+  // seller_polygon: where the USDC must arrive.
+  string seller_polygon = 5;
+  string buyer_polygon = 6;
+  uint64 lock = 7;
+  uint64 fee = 8;
+  uint64 usdc = 9;
+  bytes hash = 10;
+  int64 created_at = 11;
+  // pay_by: the USDC must be locked on Polygon with a deadline (timelock) no
+  // later than this.
+  int64 pay_by = 12;
+  // reserved_until: without the payment, the reservation ends here.
+  int64 reserved_until = 13;
+}
+
+// A finished trade: the price of LOCK comes from these.
+message Fill {
+  uint64 trade_id = 1;
+  uint64 lock = 2;
+  uint64 usdc = 3;
+  int64 time = 4;
+}
+
+service Query {
+  // Offers lists the open and reserved offers.
+  rpc Offers(QueryOffersRequest) returns (QueryOffersResponse) {
+    option (google.api.http).get = "/encryptlock/market/v1/offers";
+  }
+  // Trades lists the trades waiting for payment that involve an account.
+  rpc Trades(QueryTradesRequest) returns (QueryTradesResponse) {
+    option (google.api.http).get = "/encryptlock/market/v1/trades/{address}";
+  }
+  // Price: the last trade, the 24-hour average and the recent trades (chart).
+  rpc Price(QueryPriceRequest) returns (QueryPriceResponse) {
+    option (google.api.http).get = "/encryptlock/market/v1/price";
+  }
+  // Polygon: where this network watches the USDC payments (the app pays
+  // exactly there; empty when trades are not possible yet).
+  rpc Polygon(QueryPolygonRequest) returns (QueryPolygonResponse) {
+    option (google.api.http).get = "/encryptlock/market/v1/polygon";
+  }
+  // Candles: the price history for the chart, one candle per interval with
+  // trades (from the finished trades, kept since the network began).
+  rpc Candles(QueryCandlesRequest) returns (QueryCandlesResponse) {
+    option (google.api.http).get = "/encryptlock/market/v1/candles";
+  }
+}
+
+message QueryPolygonRequest {}
+
+message QueryPolygonResponse {
+  uint64 chain_id = 1;
+  string vault = 2;
+  string usdc = 3;
+}
+
+message QueryOffersRequest {}
+
+message QueryOffersResponse {
+  repeated Offer offers = 1;
+}
+
+message QueryTradesRequest {
+  string address = 1;
+}
+
+message QueryTradesResponse {
+  repeated Trade trades = 1;
+}
+
+message QueryPriceRequest {}
+
+message QueryPriceResponse {
+  // last: the last trade that counts for the price (none = no price yet).
+  Fill last = 1;
+  // avg24h_*: totals of the last 24 hours (price = usdc / lock).
+  uint64 day_lock = 2;
+  uint64 day_usdc = 3;
+  repeated Fill recent = 4;
+  // day_median: the price of the last 24 hours that half of the LOCK traded
+  // went above and half below (median weighed by volume), in billionths of
+  // a dollar per LOCK (0 = no trades). Many tiny trades between two accounts
+  // of the same person barely move it, so balances are valued with it.
+  uint64 day_median = 5;
+}
+
+message QueryCandlesRequest {
+  // interval: seconds per candle (60 = 1 minute … 86400 = 1 day).
+  int64 interval = 1;
+  // limit: the most recent candles to return (at most 500).
+  uint32 limit = 2;
+  // before: only candles that start before this time (unix seconds), to go
+  // back through the whole history page by page; 0 = up to now.
+  int64 before = 3;
+}
+
+// Candle: prices in billionths of a dollar per LOCK (price = usdc / lock).
+message Candle {
+  int64 time = 1;
+  uint64 open = 2;
+  uint64 high = 3;
+  uint64 low = 4;
+  uint64 close = 5;
+  uint64 lock = 6;
+  uint64 usdc = 7;
+}
+
+message QueryCandlesResponse {
+  // Oldest first.
+  repeated Candle candles = 1;
+}

@@ -1,0 +1,150 @@
+syntax = "proto3";
+package encryptlock.recovery.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "google/api/annotations.proto";
+
+option go_package = "encryptlock/lockkeeper/x/recovery/types";
+
+// Inheritance and recovery by trusted people (white paper, section 7.3).
+// Both are optional: they only exist for accounts that set a plan.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // SetPlan sets heirs and/or trusted people. The first plan applies at once;
+  // any later change takes 7 days (the owner can cancel it meanwhile).
+  rpc SetPlan(MsgSetPlan) returns (MsgSetPlanResponse);
+  // Alive ("I'm here"): a sign of life. Any transaction of the account counts
+  // too. It cancels an inheritance claim at once.
+  rpc Alive(MsgAlive) returns (MsgAliveResponse);
+  // ClaimInheritance, by an heir, once the account has shown no sign of life
+  // for the chosen time. Once enough heirs confirmed (all, unless the owner
+  // chose fewer) within 30 days, the coins go to the heirs 30 days later.
+  rpc ClaimInheritance(MsgClaimInheritance) returns (MsgClaimInheritanceResponse);
+  // ApproveRecovery, by a trusted person: move the account's coins to a new
+  // account. When enough trusted people approve the same new account, the
+  // coins move after 30 days.
+  rpc ApproveRecovery(MsgApproveRecovery) returns (MsgApproveRecoveryResponse);
+  // CancelClaims, by the owner: cancels any claim, recovery approvals and
+  // pending plan change.
+  rpc CancelClaims(MsgCancelClaims) returns (MsgCancelClaimsResponse);
+}
+
+message Heir {
+  string address = 1;
+  // Share of the coins, in percent. All heirs add up to 100.
+  uint32 percent = 2;
+}
+
+message Plan {
+  repeated Heir heirs = 1;
+  // Days without any sign of life before heirs can claim (at least 365).
+  uint32 inactivity_days = 2;
+  repeated string guardians = 3;
+  // How many trusted people must approve a recovery (at least 2).
+  uint32 guardian_threshold = 4;
+  // How many heirs must confirm the claim within 30 days; 0 = all of them.
+  uint32 heir_threshold = 5;
+}
+
+message MsgSetPlan {
+  option (cosmos.msg.v1.signer) = "owner";
+  option (amino.name) = "encryptlock/recovery/MsgSetPlan";
+
+  string owner = 1;
+  Plan plan = 2;
+}
+
+message MsgSetPlanResponse {}
+
+message MsgAlive {
+  option (cosmos.msg.v1.signer) = "owner";
+  option (amino.name) = "encryptlock/recovery/MsgAlive";
+
+  string owner = 1;
+}
+
+message MsgAliveResponse {}
+
+message MsgClaimInheritance {
+  option (cosmos.msg.v1.signer) = "heir";
+  option (amino.name) = "encryptlock/recovery/MsgClaimInheritance";
+
+  string heir = 1;
+  string account = 2;
+}
+
+message MsgClaimInheritanceResponse {
+  int64 executes_at = 1;
+}
+
+message MsgApproveRecovery {
+  option (cosmos.msg.v1.signer) = "guardian";
+  option (amino.name) = "encryptlock/recovery/MsgApproveRecovery";
+
+  string guardian = 1;
+  string account = 2;
+  // The owner's new account (must be registered).
+  string new_address = 3;
+}
+
+message MsgApproveRecoveryResponse {
+  uint32 approvals = 1;
+  // Set when the threshold is reached: when the coins move (Unix s).
+  int64 executes_at = 2;
+}
+
+message MsgCancelClaims {
+  option (cosmos.msg.v1.signer) = "owner";
+  option (amino.name) = "encryptlock/recovery/MsgCancelClaims";
+
+  string owner = 1;
+}
+
+message MsgCancelClaimsResponse {}
+
+// Claim is a running inheritance or recovery: the coins move at executes_at
+// unless the owner cancels before.
+message Claim {
+  // "inheritance" or "recovery".
+  string kind = 1;
+  // For recovery: the new account.
+  string new_address = 2;
+  int64 started_at = 3;
+  int64 executes_at = 4;
+}
+
+// Status is everything stored for one account.
+message Status {
+  Plan plan = 1;
+  Plan pending_plan = 2;
+  bool plan_change_pending = 3;
+  int64 plan_change_at = 4;
+  int64 last_active = 5;
+  Claim claim = 6;
+  // Trusted people who approved a recovery, and to which new account.
+  repeated RecoveryApproval approvals = 7;
+  // Heirs who confirmed the inheritance claim, and when the first did.
+  repeated string heir_confirmations = 8;
+  int64 confirmations_started_at = 9;
+}
+
+message RecoveryApproval {
+  string guardian = 1;
+  string new_address = 2;
+}
+
+service Query {
+  rpc Status(QueryStatusRequest) returns (QueryStatusResponse) {
+    option (google.api.http).get = "/encryptlock/recovery/v1/status/{address}";
+  }
+}
+
+message QueryStatusRequest {
+  string address = 1;
+}
+
+message QueryStatusResponse {
+  Status status = 1;
+}

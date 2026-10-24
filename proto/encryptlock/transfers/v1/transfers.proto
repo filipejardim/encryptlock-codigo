@@ -1,0 +1,252 @@
+syntax = "proto3";
+package encryptlock.transfers.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "google/api/annotations.proto";
+
+option go_package = "encryptlock/lockkeeper/x/transfers/types";
+
+// Every transfer between accounts waits for the recipient to accept it within
+// 1 hour; otherwise it goes back to the sender automatically (white paper,
+// section 6.2). Only registered accounts can receive.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // Send creates a pending transfer. The amount leaves the sender's balance
+  // at once and is held by the network until accepted, canceled or expired.
+  rpc Send(MsgSend) returns (MsgSendResponse);
+  // Accept, by the recipient, within 1 hour.
+  rpc Accept(MsgAccept) returns (MsgAcceptResponse);
+  // Cancel, by the sender, while the transfer is still pending.
+  rpc Cancel(MsgCancel) returns (MsgCancelResponse);
+
+  // Security shield (white paper, section 7.2).
+  // SetDevice links a second device to the account. It can only approve and
+  // freeze, never send. Adding the first one is immediate; changing or
+  // removing it takes 7 days.
+  rpc SetDevice(MsgSetDevice) returns (MsgSetDeviceResponse);
+  // SetLimits sets the daily limit and the amount above which the second
+  // device must approve. Stricter values apply at once; looser ones after 48 h.
+  rpc SetLimits(MsgSetLimits) returns (MsgSetLimitsResponse);
+  // Freeze ("Not me"), by the owner or the second device: no more sending and
+  // every pending transfer sent by the account goes back to it.
+  rpc Freeze(MsgFreeze) returns (MsgFreezeResponse);
+  // Unfreeze, asked by the owner and/or the second device: both together
+  // unfreeze at once, one alone after 7 days.
+  rpc Unfreeze(MsgUnfreeze) returns (MsgUnfreezeResponse);
+  // Approve, by the second device, a transfer to a new contact or above the
+  // approval amount. Then the recipient has 1 hour to accept.
+  rpc Approve(MsgApprove) returns (MsgApproveResponse);
+  // SetVault makes the account a Sovereign Vault (white paper, section 7.4):
+  // every transfer it sends is held for delay_days (at least 7) before the
+  // recipient can accept it; the vault can cancel meanwhile. A longer delay
+  // applies at once; a shorter one (or 0 to stop being a vault) only after
+  // the current delay.
+  rpc SetVault(MsgSetVault) returns (MsgSetVaultResponse);
+}
+
+message MsgSetVault {
+  option (cosmos.msg.v1.signer) = "owner";
+  option (amino.name) = "encryptlock/transfers/MsgSetVault";
+
+  string owner = 1;
+  uint32 delay_days = 2;
+}
+
+message MsgSetVaultResponse {}
+
+message MsgSetDevice {
+  option (cosmos.msg.v1.signer) = "owner";
+  option (amino.name) = "encryptlock/transfers/MsgSetDevice";
+
+  string owner = 1;
+  // device is the second device's account; empty removes it.
+  string device = 2;
+}
+
+message MsgSetDeviceResponse {}
+
+message MsgSetLimits {
+  option (cosmos.msg.v1.signer) = "owner";
+  option (amino.name) = "encryptlock/transfers/MsgSetLimits";
+
+  string owner = 1;
+  // Most lockunit that can be sent per 24 hours; 0 = no limit.
+  uint64 daily_limit = 2;
+  // Transfers above this many lockunit need the second device; 0 = only new
+  // contacts need it.
+  uint64 approval_above = 3;
+}
+
+message MsgSetLimitsResponse {}
+
+message MsgFreeze {
+  option (cosmos.msg.v1.signer) = "signer";
+  option (amino.name) = "encryptlock/transfers/MsgFreeze";
+
+  // signer is the account itself or its second device.
+  string signer = 1;
+  string account = 2;
+}
+
+message MsgFreezeResponse {
+  uint64 canceled = 1;
+}
+
+message MsgUnfreeze {
+  option (cosmos.msg.v1.signer) = "signer";
+  option (amino.name) = "encryptlock/transfers/MsgUnfreeze";
+
+  string signer = 1;
+  string account = 2;
+}
+
+message MsgUnfreezeResponse {
+  bool unfrozen = 1;
+  // When only one key asked: the account unfreezes at this time (Unix s).
+  int64 unfreezes_at = 2;
+}
+
+message MsgApprove {
+  option (cosmos.msg.v1.signer) = "device";
+  option (amino.name) = "encryptlock/transfers/MsgApprove";
+
+  string device = 1;
+  uint64 id = 2;
+}
+
+message MsgApproveResponse {}
+
+// Shield is an account's security settings and state.
+message Shield {
+  string device = 1;
+  string pending_device = 2;
+  bool device_change_pending = 3;
+  int64 device_change_at = 4;
+
+  uint64 daily_limit = 5;
+  uint64 pending_daily_limit = 6;
+  int64 daily_limit_change_at = 7;
+
+  uint64 approval_above = 8;
+  uint64 pending_approval_above = 9;
+  int64 approval_above_change_at = 10;
+
+  bool frozen = 11;
+  int64 frozen_at = 12;
+  int64 unfreeze_owner_at = 13;
+  int64 unfreeze_device_at = 14;
+
+  // Daily limit window: start time and lockunit sent since then.
+  int64 window_start = 15;
+  uint64 window_spent = 16;
+
+  // Sovereign Vault: outgoing delay in seconds (0 = not a vault).
+  int64 vault_delay = 17;
+  int64 pending_vault_delay = 18;
+  int64 vault_delay_change_at = 19;
+}
+
+message MsgSend {
+  option (cosmos.msg.v1.signer) = "sender";
+  option (amino.name) = "encryptlock/transfers/MsgSend";
+
+  string sender = 1;
+  string recipient = 2;
+  // amount in lockunit (1 LOCK = 100.000.000 lockunit).
+  uint64 amount = 3;
+}
+
+message MsgSendResponse {
+  uint64 id = 1;
+}
+
+message MsgAccept {
+  option (cosmos.msg.v1.signer) = "recipient";
+  option (amino.name) = "encryptlock/transfers/MsgAccept";
+
+  string recipient = 1;
+  uint64 id = 2;
+}
+
+message MsgAcceptResponse {}
+
+message MsgCancel {
+  option (cosmos.msg.v1.signer) = "sender";
+  option (amino.name) = "encryptlock/transfers/MsgCancel";
+
+  string sender = 1;
+  uint64 id = 2;
+}
+
+message MsgCancelResponse {}
+
+// Transfer is a pending transfer. Finished transfers (accepted, canceled,
+// expired) are removed from the state; their history is in the events.
+message Transfer {
+  uint64 id = 1;
+  string sender = 2;
+  string recipient = 3;
+  uint64 amount = 4;
+  // Network time, Unix seconds.
+  int64 created_at = 5;
+  int64 expires_at = 6;
+  // awaiting_approval: the second device must approve (within 24 h) before
+  // the recipient can accept.
+  bool awaiting_approval = 7;
+  // release_at: for transfers from a Sovereign Vault, the recipient can only
+  // accept from this time (Unix s).
+  int64 release_at = 8;
+}
+
+service Query {
+  // Transfer returns one pending transfer.
+  rpc Transfer(QueryTransferRequest) returns (QueryTransferResponse) {
+    option (google.api.http).get = "/encryptlock/transfers/v1/transfer/{id}";
+  }
+  // Pending lists the pending transfers sent or received by an account.
+  rpc Pending(QueryPendingRequest) returns (QueryPendingResponse) {
+    option (google.api.http).get = "/encryptlock/transfers/v1/pending/{address}";
+  }
+  // Shield returns an account's security settings.
+  rpc Shield(QueryShieldRequest) returns (QueryShieldResponse) {
+    option (google.api.http).get = "/encryptlock/transfers/v1/shield/{address}";
+  }
+  // DevFund returns the development fund's address (public; it changes only
+  // when the fund's own account is inherited or recovered).
+  rpc DevFund(QueryDevFundRequest) returns (QueryDevFundResponse) {
+    option (google.api.http).get = "/encryptlock/transfers/v1/dev_fund";
+  }
+}
+
+message QueryDevFundRequest {}
+
+message QueryDevFundResponse {
+  string address = 1;
+}
+
+message QueryShieldRequest {
+  string address = 1;
+}
+
+message QueryShieldResponse {
+  Shield shield = 1;
+}
+
+message QueryTransferRequest {
+  uint64 id = 1;
+}
+
+message QueryTransferResponse {
+  Transfer transfer = 1;
+}
+
+message QueryPendingRequest {
+  string address = 1;
+}
+
+message QueryPendingResponse {
+  repeated Transfer sent = 1;
+  repeated Transfer received = 2;
+}

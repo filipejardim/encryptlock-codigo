@@ -1,0 +1,23 @@
+# Go build output
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+
+# Local node data and secrets
+/data/
+*.key
+*.seed
+.env
+site-build/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
+amigos-mercado*.log
+amigos-mercado.log.json
+System.Drawing.Bitmap
+.claude/settings.local.json

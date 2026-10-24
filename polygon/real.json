@@ -1,0 +1,6 @@
+{
+  "chainId": 137,
+  "usdc": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+  "vault": "0x459EfBC5C470c7ee860f17809b9da9bc14Cb4E5b",
+  "startBlock": 95759346
+}

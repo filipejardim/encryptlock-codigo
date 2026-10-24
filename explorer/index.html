@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EncryptLock Explorer</title>
+<link rel="icon" href="assets/icon.png">
+<style>
+  /* Colours measured on the logo (design/LEIA-ME.md). */
+  :root {
+    --bg: #0E1619; --panel: #10171F; --mint: #94F7D1; --letters: #ABF0C0;
+    --silver: #B9D3C6; --trace: #1C3134; --glow: #58A891; --pearl: #F4F1E8; --danger: #FF5C6C;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: #fff; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { min-height: 100vh; background:
+    radial-gradient(ellipse 90% 45% at 50% -8%, rgba(88,168,145,.28), transparent 70%),
+    linear-gradient(#122024, var(--bg) 45%, #0A1113); }
+  #board { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 16px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0 18px;
+    border-bottom: 1px solid rgba(148,247,209,.55); box-shadow: 0 6px 12px -8px rgba(148,247,209,.35); }
+  header img.word { height: 30px; max-width: 55vw; object-fit: contain; object-position: left; }
+  @media (max-width: 520px) { #t-explorer { display: none; } header img.word { height: 24px; } }
+  header .right { display: flex; align-items: center; gap: 10px; color: var(--pearl); font-size: 14px; }
+  select { background: var(--panel); color: var(--pearl); border: 1px solid #2E5A4C; padding: 6px 8px; }
+  .hero { display: flex; justify-content: center; padding: 26px 0 10px; }
+  .hero img { width: min(520px, 100%); clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
+    filter: drop-shadow(0 0 18px rgba(148,247,209,.35)); }
+  .tagline { text-align: center; color: var(--pearl); margin: 4px 0 26px; }
+  /* The logo's frame: cut corners, metal edge, inner mint line brightest on top. */
+  .frame { position: relative; background: linear-gradient(rgba(21,36,41,.95), rgba(15,24,29,.95));
+    clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px), 0 14px);
+    padding: 20px; }
+  .frame::before { content: ""; position: absolute; inset: 4px; pointer-events: none;
+    clip-path: inherit; border: 1.2px solid rgba(148,247,209,.45);
+    border-top: 2px solid var(--mint); box-shadow: inset 0 8px 14px -12px var(--mint); }
+  .wrap { filter: drop-shadow(0 0 12px rgba(148,247,209,.18)); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+  .label { color: var(--pearl); font-size: 14px; }
+  .value { font-size: 28px; font-weight: 800; margin-top: 4px;
+    background: linear-gradient(90deg, #E6F1EB, #8FD9B4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--pearl); font-size: 13px; margin-top: 4px; }
+  .bar { height: 8px; background: #16282A; margin-top: 10px; }
+  .bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--glow), var(--mint)); box-shadow: 0 0 10px var(--mint); }
+  h2 { color: var(--letters); font-size: 18px; letter-spacing: 1.5px; margin: 32px 0 12px; text-shadow: 0 0 10px rgba(148,247,209,.6); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--pearl); font-weight: 600; padding: 6px 4px; border-bottom: 1px solid #2E5A4C; }
+  td { padding: 7px 4px; border-bottom: 1px solid rgba(46,90,76,.45); }
+  td.num { font-variant-numeric: tabular-nums; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 8px var(--mint); margin-right: 6px; }
+  .dot.off { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  .note { color: var(--pearl); font-size: 13px; text-align: center; margin: 28px 0 10px; opacity: .9; }
+  .err { color: var(--danger); text-align: center; padding: 12px; }
+</style>
+</head>
+<body>
+<canvas id="board"></canvas>
+<main>
+  <header>
+    <img class="word" src="assets/wordmark.png" alt="ENCRYPTLOCK">
+    <div class="right"><span id="t-explorer"></span>
+      <select id="lang" aria-label="Language"></select></div>
+  </header>
+
+  <div class="hero"><img src="assets/banner.png" alt="EncryptLock"></div>
+  <p class="tagline" id="t-tagline"></p>
+
+  <div id="error" class="err" hidden></div>
+
+  <div class="stats">
+    <div class="wrap"><div class="frame"><div class="label" id="t-status"></div>
+      <div class="value" id="height">—</div><div class="sub" id="status"></div></div></div>
+    <div class="wrap"><div class="frame"><div class="label" id="t-supply"></div>
+      <div class="value" id="supply">—</div><div class="sub" id="supplySub"></div>
+      <div class="bar"><i id="supplyBar" style="width:0"></i></div></div></div>
+    <div class="wrap"><div class="frame"><div class="label" id="t-keepers"></div>
+      <div class="value" id="keepers">—</div><div class="sub" id="keepersSub"></div></div></div>
+    <div class="wrap"><div class="frame"><div class="label" id="t-blocktime"></div>
+      <div class="value" id="blocktime">—</div><div class="sub" id="t-blocktimeSub"></div></div></div>
+  </div>
+
+  <div class="cols">
+    <section>
+      <h2 id="t-recent"></h2>
+      <div class="wrap"><div class="frame">
+        <table><thead><tr><th id="t-block"></th><th id="t-time"></th><th id="t-txs"></th></tr></thead>
+        <tbody id="blocks"></tbody></table>
+      </div></div>
+    </section>
+    <section>
+      <h2 id="t-lockkeepers"></h2>
+      <div class="wrap"><div class="frame">
+        <table><thead><tr><th id="t-name"></th><th id="t-share"></th><th id="t-guarantee"></th></tr></thead>
+        <tbody id="vals"></tbody></table>
+      </div></div>
+    </section>
+  </div>
+
+  <p class="note" id="t-privacy"></p>
+</main>
+
+<script>
+// Public statistics of the EncryptLock network, read straight from a
+// LockKeeper (its public REST API). Never owners, never balances.
+// Live numbers come from a LockKeeper's public REST API: ?node=…, port 1317
+// of this computer when the page is opened on it, otherwise the network's
+// public address of the moment (rede.json, published by the door on the
+// founder's computer). Without it the page still shows everything else.
+const REDE = "https://encryptlock-rede.pages.dev/rede.json";
+const LOCAL = location.protocol === "file:" || /^(localhost|127.|10.|192.168.)/.test(location.hostname);
+let NODE = new URLSearchParams(location.search).get("node") || (LOCAL ? `${location.protocol}//${location.hostname}:1317` : null);
+let REDE_INFO = null;
+async function node() {
+  if (!REDE_INFO && !NODE) {
+    try { REDE_INFO = await (await fetch(REDE, { cache: "no-store" })).json(); NODE = REDE_INFO.lockkeeper; } catch { /* stays empty */ }
+  }
+  return NODE;
+}
+const UNIT = 1e8;               // 1 LOCK = 100.000.000 lockunit
+const MAX_SUPPLY = 40_000_000;  // 401.000 at genesis (1.000 + 400.000 for the creator) + 39.599.000 by emission (white paper)
+
+// Texts in every language the explorer has; English is the base.
+const T = {
+  en: { explorer: "Explorer", tagline: "Public statistics of the network. No owners, no balances.",
+    status: "Latest block", live: "Live", stale: "No new block for {s} s", supply: "LOCK in existence",
+    ofMax: "{p}% of the 40,000,000 that will ever exist", keepers: "Active LockKeepers",
+    keepersSub: "Largest share of the new LOCK: {p}%", blocktime: "Average block time", blocktimeSub: "last 20 blocks",
+    recent: "LATEST BLOCKS", block: "Block", time: "Time", txs: "Transactions", lockkeepers: "LOCKKEEPERS",
+    name: "Name", share: "Share of the new LOCK", guarantee: "In guarantee",
+    privacy: "This explorer only shows what keeps the network transparent. It never shows who owns which address or how much an address holds.",
+    error: "Cannot reach the LockKeeper at {n}.", ago: "{s} s ago" },
+  pt: { explorer: "Explorador", tagline: "Estatísticas públicas da rede. Sem donos, sem saldos.",
+    status: "Último bloco", live: "Ao vivo", stale: "Sem bloco novo há {s} s", supply: "LOCK que já existem",
+    ofMax: "{p}% dos 40.000.000 que alguma vez vão existir", keepers: "LockKeepers ativos",
+    keepersSub: "Maior parte dos LOCK novos: {p}%", blocktime: "Tempo médio por bloco", blocktimeSub: "últimos 20 blocos",
+    recent: "ÚLTIMOS BLOCOS", block: "Bloco", time: "Hora", txs: "Transações", lockkeepers: "LOCKKEEPERS",
+    name: "Nome", share: "Parte dos LOCK novos", guarantee: "Em garantia",
+    privacy: "Este explorador só mostra o que mantém a rede transparente. Nunca mostra quem é dono de que endereço nem quanto tem um endereço.",
+    error: "Sem resposta do LockKeeper em {n}.", ago: "há {s} s" },
+};
+const NAMES = { en: "English", pt: "Português (Portugal)" };
+let lang = (localStorage.getItem("lang") || navigator.language || "en").slice(0, 2);
+if (!T[lang]) lang = "en";
+const t = (k, v = {}) => T[lang][k].replace(/\{(\w+)\}/g, (_, x) => v[x]);
+const fmt = (n, d = 0) => new Intl.NumberFormat(lang === "pt" ? "pt-PT" : "en-US", { minimumFractionDigits: d, maximumFractionDigits: d }).format(n);
+
+// Each LockKeeper's share of the new LOCK, as the network pays it (same rule
+// as x/powercap and the app): by guarantee, nothing for one that is off, and
+// from 20 on no one above 5%. The guarantee share alone would show the
+// founder's computer at ~76% with 20 on, when it earns 5%.
+function earningShares(vals) {
+  const powers = vals.map((v) => (v.jailed ? 0n : BigInt(v.tokens)));
+  const on = powers.filter((p) => p > 0n).sort((a, b) => (b > a ? 1 : b < a ? -1 : 0));
+  let capped = powers;
+  if (on.length >= 20) {
+    const suffix = Array(on.length + 1).fill(0n);
+    for (let i = on.length - 1; i >= 0; i--) suffix[i] = suffix[i + 1] + on[i];
+    for (let k = 0; k < 20; k++) {
+      const limit = suffix[k] / BigInt(20 - k);
+      if (on[k] <= limit) {
+        if (k > 0) capped = powers.map((p) => (p > limit ? limit : p));
+        break;
+      }
+    }
+  }
+  const total = capped.reduce((s, p) => s + p, 0n);
+  return capped.map((p) => (total === 0n ? 0 : Number(p * 1000000n / total) / 1000000));
+}
+
+function texts() {
+  document.documentElement.lang = lang;
+  for (const k of ["explorer","tagline","status","supply","keepers","blocktime","blocktimeSub","recent","block","time","txs","lockkeepers","name","share","guarantee","privacy"])
+    document.getElementById("t-" + k).textContent = t(k);
+}
+const sel = document.getElementById("lang");
+for (const [k, n] of Object.entries(NAMES)) sel.add(new Option(n, k, k === lang, k === lang));
+sel.onchange = () => { lang = sel.value; localStorage.setItem("lang", lang); texts(); refresh(); };
+texts();
+
+const get = async (path) => { const r = await fetch((await node()) + path); if (!r.ok) throw new Error(r.status); return r.json(); };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+async function refresh() {
+  try {
+    const latest = await get("/cosmos/base/tendermint/v1beta1/blocks/latest");
+    const h = +latest.block.header.height, last = new Date(latest.block.header.time);
+    document.getElementById("height").textContent = fmt(h);
+    const age = Math.max(0, Math.round((Date.now() - last) / 1000));
+    document.getElementById("status").innerHTML = age < 30
+      ? `<span class="dot"></span>${t("live")} · ${t("ago", { s: age })}`
+      : `<span class="dot off"></span>${t("stale", { s: age })}`;
+
+    const supply = +(await get("/cosmos/bank/v1beta1/supply/by_denom?denom=lockunit")).amount.amount / UNIT;
+    document.getElementById("supply").textContent = fmt(supply, 0);
+    const pct = supply / MAX_SUPPLY * 100;
+    document.getElementById("supplySub").textContent = t("ofMax", { p: fmt(pct, 3) });
+    document.getElementById("supplyBar").style.width = Math.max(0.5, pct) + "%";
+
+    const vals = (await get("/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED")).validators;
+    vals.sort((a, b) => b.tokens - a.tokens);
+    const shares = earningShares(vals);
+    document.getElementById("keepers").textContent = fmt(vals.length);
+    document.getElementById("keepersSub").textContent = t("keepersSub", { p: fmt(Math.max(0, ...shares) * 100, 1) });
+    document.getElementById("vals").innerHTML = vals.map((v, i) =>
+      `<tr><td><span class="dot${v.jailed ? " off" : ""}"></span>${esc(v.description?.moniker || "—")}</td>` +
+      `<td class="num">${fmt(shares[i] * 100, 1)}%</td><td class="num">${fmt(v.tokens / UNIT, 0)} LOCK</td></tr>`).join("");
+
+    // Last 20 blocks: list 10, average time over 20.
+    const hs = Array.from({ length: 20 }, (_, i) => h - i).filter((x) => x > 0);
+    const bs = await Promise.all(hs.map((x) => get(`/cosmos/base/tendermint/v1beta1/blocks/${x}`).catch(() => null)));
+    const ok = bs.filter(Boolean);
+    if (ok.length > 1) {
+      const span = (new Date(ok[0].block.header.time) - new Date(ok[ok.length - 1].block.header.time)) / 1000;
+      document.getElementById("blocktime").textContent = fmt(span / (ok.length - 1), 2) + " s";
+    }
+    document.getElementById("blocks").innerHTML = ok.slice(0, 10).map((b) =>
+      `<tr><td class="num">${fmt(+b.block.header.height)}</td>` +
+      `<td>${new Date(b.block.header.time).toLocaleTimeString(lang === "pt" ? "pt-PT" : "en-US")}</td>` +
+      `<td class="num">${(b.block.data?.txs || []).length}</td></tr>`).join("");
+    document.getElementById("error").hidden = true;
+  } catch (e) {
+    const el = document.getElementById("error");
+    el.textContent = t("error", { n: NODE });
+    el.hidden = false;
+  }
+}
+refresh();
+setInterval(refresh, 4000);
+
+// Circuit-board background like the app: parallel trace bundles from the
+// sides with 45° bends and pads, mirrored left/right, centre kept clear.
+function board() {
+  const c = document.getElementById("board"), x = c.getContext("2d");
+  const w = c.width = innerWidth * devicePixelRatio, h = c.height = innerHeight * devicePixelRatio;
+  c.style.width = innerWidth + "px"; c.style.height = innerHeight + "px";
+  x.scale(devicePixelRatio, devicePixelRatio);
+  const W = innerWidth, H = innerHeight, band = H / 10, gap = 7;
+  const bundles = [[4,.07,.30,.24,0],[3,.11,-.28,.21,0],[5,.05,.32,.26,1],[3,.13,-.30,.22,0],[4,.08,.28,.25,0],
+                   [2,.12,-.25,.20,0],[4,.06,.30,.25,1],[3,.10,-.28,.22,0],[5,.07,.26,.26,0]];
+  const side = (mirror) => {
+    x.save(); if (mirror) { x.translate(W, 0); x.scale(-1, 1); }
+    bundles.forEach((_, b) => {
+      const [n, run, bend, end, bright] = mirror ? bundles[(b + 4) % bundles.length] : bundles[b];
+      const y0 = band * (b + .75) - (bend < 0 ? 0 : band * bend * .5), x1 = W * run, dy = band * bend;
+      for (let i = 0; i < n; i++) {
+        const o = (i - (n - 1) / 2) * gap, k = Math.SQRT2 - 1; // keep spacing through the 45° bend
+        const sgn = Math.sign(dy) || 1;
+        const pts = [[-8, y0 + o], [x1 - sgn * o * k, y0 + o], [x1 + Math.abs(dy) - sgn * o * k, y0 + dy + o], [W * end, y0 + dy + o]];
+        x.beginPath(); pts.forEach(([px, py], j) => j ? x.lineTo(px, py) : x.moveTo(px, py));
+        if (bright) { x.strokeStyle = "rgba(148,247,209,.10)"; x.lineWidth = 5; x.stroke(); }
+        x.strokeStyle = bright ? "rgba(88,168,145,.55)" : "#1C3134"; x.lineWidth = bright ? 1.3 : 1.1; x.stroke();
+        const [ex, ey] = pts[3]; const shift = i % 2 ? 9 : 0;
+        if (shift) { x.beginPath(); x.moveTo(ex, ey); x.lineTo(ex + shift, ey); x.stroke(); }
+        x.beginPath(); x.arc(ex + shift + 2.6, ey, 2.6, 0, Math.PI * 2); x.stroke();
+      }
+    });
+    x.restore();
+  };
+  side(false); side(true);
+}
+board(); addEventListener("resize", board);
+</script>
+</body>
+</html>

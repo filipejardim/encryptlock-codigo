@@ -1,0 +1,166 @@
+syntax = "proto3";
+package encryptlock.rotation.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "google/api/annotations.proto";
+
+option go_package = "encryptlock/lockkeeper/x/rotation/types";
+
+// Msg: a LockKeeper tells the network it is switched on (founder's decision,
+// 6 Oct: everyone switched on works and earns).
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // Heartbeat says "I am on". Sent every 5 minutes by the program next to
+  // the LockKeeper; free.
+  rpc Heartbeat(MsgHeartbeat) returns (MsgHeartbeatResponse);
+
+  // SetHelper names a helper account that may send the heartbeats for the
+  // LockKeeper (the computer keeps its key, so it never asks for the
+  // owner's password). The helper holds no coins and can do nothing else.
+  // An empty helper removes it.
+  rpc SetHelper(MsgSetHelper) returns (MsgSetHelperResponse);
+
+  // AnnounceKey: a computer that wants to become a LockKeeper (linked from a
+  // phone by QR code) publishes its block-signing key, signed by its helper
+  // account. The phone reads it from here (the key is too big for a QR code)
+  // and signs the guarantee. It is forgotten after 24 hours.
+  rpc AnnounceKey(MsgAnnounceKey) returns (MsgAnnounceKeyResponse);
+
+  // ProveChip: a computer shows that it is a real computer (founder's
+  // decision, 8 Oct: one computer = one LockKeeper). The network's chip
+  // checker did the secret test with the computer's security chip (TPM 2.0)
+  // and signed the ticket "chip code -> this account". Each chip serves one
+  // account at a time; a LockKeeper says "I am on" only with a proven chip
+  // (on its own account or its helper). Free.
+  rpc ProveChip(MsgProveChip) returns (MsgProveChipResponse);
+}
+
+message MsgHeartbeat {
+  option (cosmos.msg.v1.signer) = "keeper";
+  option (amino.name) = "encryptlock/rotation/MsgHeartbeat";
+
+  // keeper is the LockKeeper's account (lock1...) or its helper.
+  string keeper = 1;
+}
+
+message MsgHeartbeatResponse {}
+
+message MsgSetHelper {
+  option (cosmos.msg.v1.signer) = "keeper";
+  option (amino.name) = "encryptlock/rotation/MsgSetHelper";
+
+  string keeper = 1;
+  string helper = 2;
+}
+
+message MsgSetHelperResponse {}
+
+message MsgAnnounceKey {
+  option (cosmos.msg.v1.signer) = "helper";
+  option (amino.name) = "encryptlock/rotation/MsgAnnounceKey";
+
+  string helper = 1;
+  // pub_key: the ML-DSA-65 block-signing public key (raw bytes).
+  bytes pub_key = 2;
+}
+
+message MsgAnnounceKeyResponse {}
+
+message MsgProveChip {
+  option (cosmos.msg.v1.signer) = "account";
+  option (amino.name) = "encryptlock/rotation/MsgProveChip";
+
+  // account: usually the computer's helper account (lock1...).
+  string account = 1;
+  // code: the chip's code (hex SHA-256 of its endorsement key).
+  string code = 2;
+  // ticket: the checker's Ed25519 signature of the code and the account.
+  bytes ticket = 3;
+}
+
+message MsgProveChipResponse {}
+
+// Announced is a block-signing key waiting for a phone to link it.
+message Announced {
+  bytes pub_key = 1;
+  int64 at = 2;
+}
+
+// Online is what the network knows about one LockKeeper being on.
+message Online {
+  // last is the network time of the last heartbeat (Unix seconds).
+  int64 last = 1;
+  // day is the day (Unix seconds / 86400) that `today` counts.
+  int64 day = 2;
+  // today and yesterday: seconds switched on in those days (for the seats
+  // given to whoever stays on longest).
+  int64 today = 3;
+  int64 yesterday = 4;
+  // earlier: seconds switched on in the 28 days before yesterday, newest
+  // first (for the hours log the person sees).
+  repeated int64 earlier = 5;
+}
+
+// Query: who is on and who is signing the blocks.
+service Query {
+  rpc Status(QueryStatusRequest) returns (QueryStatusResponse) {
+    option (google.api.http).get = "/encryptlock/rotation/v1/status/{keeper}";
+  }
+  rpc Overview(QueryOverviewRequest) returns (QueryOverviewResponse) {
+    option (google.api.http).get = "/encryptlock/rotation/v1/overview";
+  }
+  // Helper: the key a computer announced, and the LockKeeper it already
+  // works for (empty until a phone linked it).
+  rpc Helper(QueryHelperRequest) returns (QueryHelperResponse) {
+    option (google.api.http).get = "/encryptlock/rotation/v1/helper/{helper}";
+  }
+}
+
+message QueryStatusRequest {
+  string keeper = 1;
+}
+
+message QueryStatusResponse {
+  // online: a heartbeat in the last 10 minutes.
+  bool online = 1;
+  // signing: currently in the drawn group that signs the blocks.
+  bool signing = 2;
+  // seconds_on: seconds switched on today plus yesterday.
+  int64 seconds_on = 3;
+  int64 last_heartbeat = 4;
+  // The hours log: seconds switched on today, yesterday, in the last 7 days
+  // and in the last 30 days (today included).
+  int64 seconds_today = 5;
+  int64 seconds_yesterday = 6;
+  int64 seconds_week = 7;
+  int64 seconds_month = 8;
+  // chip: this LockKeeper may say "I am on" (its chip is proven, or it is
+  // one of the computers that started the network).
+  bool chip = 9;
+}
+
+message QueryOverviewRequest {}
+
+message QueryOverviewResponse {
+  // online: LockKeepers switched on now (all of them earn).
+  uint64 online = 1;
+  // signing: LockKeepers in the drawn group signing the blocks now.
+  uint64 signing = 2;
+  // seats: the most that can sign at once.
+  uint64 seats = 3;
+}
+
+message QueryHelperRequest {
+  string helper = 1;
+}
+
+message QueryHelperResponse {
+  // pub_key: the announced block-signing key (empty if none or expired).
+  bytes pub_key = 1;
+  // keeper: the LockKeeper account this helper works for (empty if none).
+  string keeper = 2;
+  // chip: the code of the chip proven by this account (empty if none).
+  string chip = 3;
+}

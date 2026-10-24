@@ -1,0 +1,46 @@
+syntax = "proto3";
+package encryptlock.registry.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "google/api/annotations.proto";
+
+option go_package = "encryptlock/lockkeeper/x/registry/types";
+
+// Msg registers accounts. Only registered accounts can receive transfers
+// (white paper, section 6.1). Registration is free.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // Register records the signer's account. A brand-new account (no coins,
+  // not yet known to the network) can register: the network checks both
+  // hybrid signatures and then creates the account.
+  rpc Register(MsgRegister) returns (MsgRegisterResponse);
+}
+
+message MsgRegister {
+  option (cosmos.msg.v1.signer) = "address";
+  option (amino.name) = "encryptlock/registry/MsgRegister";
+
+  // address is the account being registered (lock1...).
+  string address = 1;
+}
+
+message MsgRegisterResponse {}
+
+// Query answers whether an account is registered.
+service Query {
+  rpc Registered(QueryRegisteredRequest) returns (QueryRegisteredResponse) {
+    option (google.api.http).get = "/encryptlock/registry/v1/registered/{address}";
+  }
+}
+
+message QueryRegisteredRequest {
+  string address = 1;
+}
+
+message QueryRegisteredResponse {
+  bool registered = 1;
+  // registered_at is the network time of registration, in Unix seconds.
+  int64 registered_at = 2;
+}

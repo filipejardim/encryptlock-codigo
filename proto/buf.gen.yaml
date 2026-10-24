@@ -1,0 +1,12 @@
+# Generates Go code for EncryptLock's own messages. Run from proto/:
+#   buf generate --template buf.gen.yaml --path encryptlock
+# then move ./gen/encryptlock/lockkeeper/* into the repository (see scripts/protogen.sh).
+version: v2
+plugins:
+  - local: protoc-gen-gocosmos
+    out: gen
+    opt: plugins=grpc,Mgoogle/protobuf/any.proto=github.com/cosmos/gogoproto/types/any
+  # REST paths (google.api.http) for the app and the explorer.
+  - local: protoc-gen-grpc-gateway
+    out: gen
+    opt: logtostderr=true,allow_colon_final_segments=true

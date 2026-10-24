@@ -1,0 +1,672 @@
+{
+  "@@locale": "en",
+  "appTitle": "EncryptLock",
+  "tagline": "The money you cannot lose.",
+  "createWallet": "Create new wallet",
+  "haveWords": "I already have my 24 words",
+  "language": "Language",
+  "wordsTitle": "Your 24 recovery words",
+  "wordsWarning": "Write these 24 words on paper, in order, and keep them somewhere safe. Anyone who has them controls your wallet. Without them, a lost phone means lost coins. Never photograph them or send them to anyone.",
+  "wordsWritten": "I wrote them down",
+  "confirmTitle": "Confirm your words",
+  "confirmWord": "Word number {n}",
+  "@confirmWord": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmWrong": "That is not the right word. Check your paper.",
+  "continueButton": "Continue",
+  "restoreTitle": "Recover your wallet",
+  "restoreHint": "Type your 24 words, separated by spaces",
+  "restoreInvalid": "These are not 24 valid recovery words.",
+  "passwordTitle": "Protect this phone",
+  "passwordExplain": "This password encrypts your wallet on this phone. If you forget it, recover the wallet with your 24 words.",
+  "password": "Password",
+  "passwordRepeat": "Repeat the password",
+  "passwordTooShort": "At least 8 characters.",
+  "passwordMismatch": "The passwords do not match.",
+  "decryptTitle": "Decrypt your wallet",
+  "decryptButton": "Decrypt",
+  "forgotPassword": "Forgot the password? Recover with your 24 words",
+  "balance": "Balance",
+  "notConnected": "Not connected to the EncryptLock network yet",
+  "yourAddress": "Your address",
+  "copy": "Copy",
+  "copied": "Copied",
+  "navWallet": "Wallet",
+  "navSend": "Send",
+  "navReceive": "Receive",
+  "navSettings": "Settings",
+  "comingSoon": "Coming soon",
+  "previewMode": "Preview: in the browser the wallet uses example data",
+  "lockWallet": "Lock",
+  "errorGeneric": "Something went wrong: {error}",
+  "@errorGeneric": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
+  "wrongPasswordLeft": "Wrong password. Attempts left before a pause: {n}",
+  "tooManyAttempts": "Too many wrong passwords. Try again in {time}.",
+  "currency": "Reference currency",
+  "@wrongPasswordLeft": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@tooManyAttempts": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "autoLock": "Lock when not in use",
+  "autoLockMinutes": "After {n} min",
+  "@autoLockMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "connectedBlock": "Connected · block {block}",
+  "networkError": "Cannot reach the LockKeeper. Check the network in Settings.",
+  "connecting": "Connecting to the network…",
+  "offlineSince": "No connection · last update {time}",
+  "@offlineSince": {"placeholders": {"time": {"type": "String"}}},
+  "lockKeeperEarnings": "Earning as a blockchain LockKeeper",
+  "toCollect": "on the way to your balance · goes in every hour",
+  "networkSetting": "Network (LockKeeper)",
+  "networkHint": "Address of the LockKeeper, e.g. http://192.168.1.10:1317",
+  "save": "Save",
+  "cancel": "Cancel",
+  "@connectedBlock": {
+    "placeholders": {
+      "block": {
+        "type": "String"
+      }
+    }
+  },
+  "receiveTitle": "Your address to receive LOCK",
+  "receiveExplain": "Show this code or send the address. You will have 1 hour to accept each transfer.",
+  "registering": "Registering this wallet on the network (free)…",
+  "sendTo": "Recipient address (lock1…)",
+  "scanQr": "Scan QR code",
+  "amount": "Amount",
+  "feeLine": "Fee: {fee} LOCK · total: {total} LOCK",
+  "sendButton": "Send",
+  "confirmSend": "Send {amount} LOCK?",
+  "confirmSendNote": "The recipient has 1 hour to accept. If they don't, the coins come back to you (the fee does not).",
+  "invalidAddress": "This is not a valid EncryptLock address.",
+  "invalidAmount": "Invalid amount (at most 8 decimals).",
+  "notEnough": "Not enough balance for the amount plus the fee.",
+  "sentOk": "Sent. Waiting for the recipient to accept.",
+  "txFailed": "The network refused: {reason}",
+  "incoming": "To accept",
+  "outgoing": "Sent, waiting",
+  "accept": "Accept",
+  "fromAddr": "From {address}",
+  "toAddr": "To {address}",
+  "timeLeft": "{time} left",
+  "acceptedOk": "Accepted. The coins are in your balance.",
+  "canceledOk": "Canceled. The coins came back to you.",
+  "awaitingApproval": "Waiting for the sender's second device",
+  "cameraDenied": "The camera is not available. Allow it in the phone settings.",
+  "@feeLine": {
+    "placeholders": {
+      "fee": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "@confirmSend": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@txFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "@fromAddr": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "@toAddr": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "@timeLeft": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "enterPassword": "Enter your password",
+  "confirm": "Confirm",
+  "passwordChanged": "Password changed.",
+  "changePassword": "Change password",
+  "newPassword": "New password",
+  "showWords": "See the 24 words",
+  "showWordsWarning": "Never show these words to anyone and never photograph them. Whoever sees them can take your coins.",
+  "deleteWallet": "Delete wallet from this device",
+  "deleteExplain": "The wallet leaves this phone. Your coins stay on the network, but only your 24 recovery words can bring them back. Do you have them on paper?",
+  "deleted": "Wallet deleted from this phone.",
+  "notMe": "It wasn't me — freeze",
+  "notMeExplain": "Use this if something was sent without you or your phone was taken. The account freezes at once: nothing can leave it and transfers waiting are canceled. With only this phone, unfreezing takes 7 days.",
+  "unfreeze": "Unfreeze",
+  "unfreezeExplain": "Unfreezing with only this phone takes 7 days. This protects you if a thief has your phone.",
+  "unfreezeAsked": "Unfreeze requested: in 7 days the account works again.",
+  "frozenOk": "Account frozen. Transfers waiting were canceled.",
+  "frozenBanner": "Account frozen: nothing can leave it.",
+  "biometric": "Fingerprint / face",
+  "on": "On",
+  "off": "Off",
+  "biometricReason": "Unlock EncryptLock",
+  "usePassword": "Use password",
+  "useBiometric": "Use fingerprint / face",
+  "biometricChanged": "The fingerprints on this phone changed. Unlock with your password and turn fingerprint / face on again.",
+  "biometricUnavailable": "Fingerprint / face is not available on this phone.",
+  "biometricEnabled": "Fingerprint / face is on.",
+  "sendCode": "Send code",
+  "sendCodeEnter": "Send code",
+  "sendCodeWrong": "Wrong send code.",
+  "sendCodeRemoved": "Send code removed.",
+  "sendCodeInvalid": "Use 4 to 8 digits.",
+  "sendCodeMismatch": "The codes do not match.",
+  "sendCodeSet": "Send code saved.",
+  "sendCodeExplain": "A separate code asked before every sending, different from your password. If someone learns your password, they still cannot send.",
+  "sendCodeNew": "New send code (4 to 8 digits)",
+  "sendCodeRepeat": "Repeat the send code",
+  "shieldDevice": "Second device",
+  "deviceNone": "None",
+  "deviceExplain": "A second phone (with its own EncryptLock wallet) that can only approve and freeze, never send. It must approve sendings to new contacts or above your limit. Linking the first one is immediate; changing or removing it takes 7 days.",
+  "deviceAddress": "Address of the second device (lock1…)",
+  "deviceLink": "Link",
+  "deviceRemove": "Remove",
+  "deviceChangeWait": "Waiting: {device} from {date}",
+  "deviceSaved": "Done. Changing or removing a device takes 7 days.",
+  "limits": "Daily limit",
+  "limitsNone": "No limit",
+  "limitsValue": "{amount} LOCK per 24 h",
+  "approvalAboveValue": "Second device approves above {amount} LOCK",
+  "limitsChangeWait": "Higher limits apply on {date}",
+  "dailyLimitField": "Most per 24 hours (LOCK, empty = no limit)",
+  "approvalAboveField": "Second device approves above (LOCK, empty = only new contacts)",
+  "limitsExplain": "Lowering applies at once. Raising takes 48 hours, so a thief cannot raise it.",
+  "limitsSaved": "Limits saved.",
+  "guardOther": "Protect another account",
+  "guardExplain": "Use this on your second phone. Add the account it protects: its sendings to new contacts or above its limit appear on the Wallet screen to approve, and you can press \"It wasn't me\" for it.",
+  "guardAccountField": "Account to protect (lock1…)",
+  "guardAdd": "Add",
+  "approvalsTitle": "Waiting for your approval",
+  "approve": "Approve",
+  "approvedOk": "Approved.",
+  "@deviceChangeWait": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "@limitsValue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@approvalAboveValue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@limitsChangeWait": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "alerts": "Alerts",
+  "alertIncomingTitle": "LOCK to accept",
+  "alertIncomingBody": "{amount} LOCK are waiting for you. Accept them within 1 hour.",
+  "alertSentTitle": "Coins sent from your account",
+  "alertSentBody": "{amount} LOCK were sent. If it wasn't you, open EncryptLock and press \"It wasn't me\".",
+  "alertApprovalTitle": "Approval needed",
+  "alertApprovalBody": "An account you protect wants to send {amount} LOCK.",
+  "alertClaimTitle": "Inheritance or recovery requested",
+  "alertClaimBody": "Someone asked for the coins of your account. If you are fine, open EncryptLock now.",
+  "@alertIncomingBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@alertSentBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@alertApprovalBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "inheritance": "Inheritance",
+  "inheritanceExplain": "Choose who receives your coins if this account shows no sign of life for the time you choose (at least 1 year). Any transaction, or \"I'm here\", is a sign of life. All heirs must confirm, then 30 days of waiting before the coins move.",
+  "heirAddress": "Heir's address (lock1…)",
+  "addHeir": "Add heir",
+  "inactivityDaysField": "Days without a sign of life (at least 365)",
+  "percentsMust100": "The shares must add up to 100%.",
+  "planSaved": "Plan saved. Changes to an existing plan take 7 days.",
+  "planChangeWait": "Change waiting until {date}",
+  "lastAlive": "Last sign of life: {date}",
+  "imHere": "I'm here",
+  "aliveOk": "Sign of life recorded.",
+  "guardians": "Trusted people",
+  "guardiansExplain": "If you lose your 24 words, your trusted people can move your coins to a new wallet of yours: at least 2 must approve, then 30 days of waiting in which you can cancel.",
+  "guardianAddress": "Trusted person's address (lock1…)",
+  "addGuardian": "Add person",
+  "guardiansNeeded": "How many must approve (at least 2)",
+  "vault": "Sovereign Vault",
+  "vaultExplain": "Every sending from this account waits the days you choose (7 to 365) before it can be accepted, and can be canceled meanwhile. Raising applies at once; lowering only after the current delay.",
+  "vaultOff": "Off",
+  "vaultOn": "{days} days of delay",
+  "vaultDaysField": "Days of delay (7 to 365, 0 = off)",
+  "vaultSaved": "Vault saved.",
+  "locks": "Locked coins",
+  "lockExplain": "Lock coins until a date: nobody can move them, not even you. They come back by themselves.",
+  "lockDaysField": "Lock for how many days",
+  "lockButton": "Lock",
+  "lockedUntil": "{amount} LOCK until {date}",
+  "lockedOk": "Coins locked.",
+  "helpOthers": "Help someone else",
+  "helpOthersExplain": "If you are someone's heir or trusted person: ask for their inheritance, or approve moving their coins to their new wallet.",
+  "accountField": "Their account (lock1…)",
+  "newAccountField": "Their new account (lock1…)",
+  "claimButton": "Ask for the inheritance",
+  "approveRecoveryButton": "Approve recovery",
+  "claimBanner": "Someone asked for your coins (inheritance or recovery). If you did not arrange it, cancel it now.",
+  "cancelClaim": "It's me — cancel",
+  "done": "Done.",
+  "@planChangeWait": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "@lastAlive": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "@vaultOn": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "@lockedUntil": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "lockedTotal": "{amount} LOCK locked (they come back by themselves)",
+  "attemptsRule": "After 5 wrong passwords you wait 2 minutes; after 10, 4 minutes; and the wait keeps doubling.",
+  "@lockedTotal": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "networkPanel": "Blockchain · LockKeepers",
+  "latestBlock": "Latest block",
+  "lockInExistence": "LOCK in existence",
+  "earningSharesNote": "% = share of the new LOCK of each hour. From 20 LockKeepers on, no one gets more than 5%.",
+  "inGuaranteeTotal": "{amount} LOCK in guarantee",
+  "@inGuaranteeTotal": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "demoPassword": "Test version — password: {pw}",
+  "@demoPassword": {
+    "placeholders": {
+      "pw": {
+        "type": "String"
+      }
+    }
+  },
+  "readMore": "Read more",
+  "helpSection": "Help",
+  "advanced": "Advanced",
+  "advancedExplain": "Only change these if you know what you are doing. Normally the app finds the network by itself.",
+  "historyTitle": "Latest transfers",
+  "historyEmpty": "No finished transfers yet.",
+  "startWithWindows": "Start with Windows",
+  "startWithWindowsHint": "Opens EncryptLock when you turn on the computer, so the alerts keep working.",
+  "polygonTestNet": "Test network {name} — no real money",
+  "@polygonTestNet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "market": "Market",
+  "trade": "Buy / Sell",
+  "noPriceYet": "No price yet",
+  "perLock": "{price} per LOCK",
+  "@perLock": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "median24h": "24 h median: {price}",
+  "@median24h": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "bestSell": "Best sale: {price}",
+  "@bestSell": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "bestBuy": "Best purchase: {price}",
+  "@bestBuy": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "marketWarning": "Always sell with the Buy / Sell button: that way you are never cheated.",
+  "sellLock": "Sell LOCK",
+  "buyLock": "Buy LOCK",
+  "sellOffers": "Sell offers",
+  "buyOffers": "Buy offers",
+  "noOffers": "No offers yet.",
+  "amountLock": "How many LOCK",
+  "totalUsd": "Total in dollars (USDC)",
+  "offerLasts": "The offer lasts",
+  "oneDay": "1 day",
+  "sevenDays": "7 days",
+  "untilCancel": "Until you cancel",
+  "swapFeeLine": "Trade fee (0.25%): {fee} LOCK",
+  "@swapFeeLine": {
+    "placeholders": {
+      "fee": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmSell": "You will sell {lock} LOCK for {usd} USDC. Are you sure?",
+  "@confirmSell": {
+    "placeholders": {
+      "lock": {
+        "type": "String"
+      },
+      "usd": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmBuy": "You will offer {usd} USDC for {lock} LOCK. Are you sure?",
+  "@confirmBuy": {
+    "placeholders": {
+      "usd": {
+        "type": "String"
+      },
+      "lock": {
+        "type": "String"
+      }
+    }
+  },
+  "offerPlaced": "Offer published",
+  "offerCanceled": "Offer canceled",
+  "inTrade": "In a trade",
+  "yourOffer": "Your offer",
+  "takeSoon": "Accepting offers: coming soon",
+  "priceEach": "= {price} per LOCK",
+  "@priceEach": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "pcLkTitle": "Make this computer a blockchain LockKeeper",
+  "pcLkBody": "Your computer helps keep the EncryptLock blockchain: it checks and records transfers together with other computers. It uses very little power and does no mining. It needs to be on and connected to the internet; the more hours on, the more you earn. Earnings go into your balance every hour and can be exchanged for USDC in Buy / Sell. Switching off costs nothing: you just don't earn while off.",
+  "pcLkGuarantee": "Guarantee: {amount} LOCK (1 dollar at the last trade). It stays yours.",
+  "@pcLkGuarantee": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "pcLkNeedMore": "You need at least {amount} LOCK. You can buy LOCK in Buy / Sell.",
+  "@pcLkNeedMore": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "pcLkButton": "Make this computer a blockchain LockKeeper",
+  "pcLkWorking": "Preparing this PC's LockKeeper…",
+  "pcLkOn": "This computer is a blockchain LockKeeper · on",
+  "pcLkOff": "This computer is a blockchain LockKeeper · off",
+  "pcLkSigning": "Signing blocks now",
+  "pcLkWaiting": "Checking transfers · waiting for its turn to sign",
+  "pcLkHoursOn": "{hours} h on in the last 2 days",
+  "@pcLkHoursOn": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "pcLkSwitch": "LockKeeper on",
+  "pcLkAutostart": "Switch on by itself when Windows starts",
+  "pcLkAutostartHint": "So you keep earning even if you forget to open the app. You can switch this off whenever you want.",
+  "pcLkError": "It didn't work: {error}",
+  "@pcLkError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "buyHowTitle": "How to buy EncryptLock",
+  "buyHowStep1": "Buy USDC on an exchange (Binance, Coinbase…) and withdraw it to this wallet's 0x address (Wallet → turn the coins to USDC). When withdrawing, always choose the Polygon network: on another network the money does not show up here.",
+  "buyHowStep2": "Also keep about $5 of POL in this EncryptLock wallet (same 0x address), not on the exchange: it pays the Polygon network fee every time you move USDC (buying or sending; a few cents each time, enough for hundreds). It is the same in every Polygon wallet: this fee belongs to the Polygon network, not to EncryptLock.",
+  "buyHowStep3": "Then, here in Buy / Sell: accept a sell offer (you buy at once) or publish a buy offer and wait for a seller.",
+  "linkPhoneButton": "Link a computer (QR code)",
+  "linkPcSteps": "1. On your phone, open EncryptLock (from the app store, if you don't have it yet).\n2. In the Wallet, at the bottom, tap \"Link a computer (QR code)\".\n3. Point the camera at this code and confirm.\nThe guarantee comes from your phone's wallet and the earnings go there. Your 24 words never come to this computer.",
+  "linkPcWaiting": "Waiting for your phone…",
+  "linkPcDone": "Done! This computer is a blockchain LockKeeper of the wallet {account}. You can close this window: it keeps working.",
+  "@linkPcDone": {"placeholders":{"account":{"type":"String"}}},
+  "linkPhoneConfirm": "Make that computer a blockchain LockKeeper of this wallet? Guarantee: {amount} LOCK (1 dollar at the last trade). It stays yours, and the earnings come to this wallet every hour.",
+  "@linkPhoneConfirm": {"placeholders":{"amount":{"type":"String"}}},
+  "linkPhoneDone": "Done! The computer is now a blockchain LockKeeper. Its earnings come to this wallet every hour.",
+  "linkPhoneBadCode": "This is not a computer's code. On the computer, open EncryptLock and choose \"Make this computer a blockchain LockKeeper\".",
+  "linkPhoneNoKey": "The computer is not ready yet. Leave EncryptLock open on the computer for a minute and try again.",
+  "buyConfirm": "You buy {lock} LOCK for {usd}. The USDC leave this wallet on Polygon and go to the seller through the safe vault; the LOCK come to you as soon as the blockchain's LockKeepers see the payment. Polygon's network fee (a few cents in POL) is also paid from this wallet.",
+  "@buyConfirm": {"placeholders":{"lock":{"type":"String"},"usd":{"type":"String"}}},
+  "buyPaying": "Paying on Polygon… keep the app open for a moment.",
+  "buyDone": "Paid! The LOCK arrive in a few seconds, as soon as the blockchain's LockKeepers confirm the payment.",
+  "buyNoUsdc": "Not enough USDC on Polygon for this offer. See \"How to buy EncryptLock\" below.",
+  "buyNoPol": "You need a little POL (a few cents) on Polygon to pay the network fee.",
+  "buyNotReady": "Buying is not available on this network yet.",
+  "sellConfirm": "You sell {lock} LOCK for {usd}. Your LOCK (and the 0.25% fee) wait in the market; the buyer has 12 hours to pay on Polygon. When the payment arrives, the USDC are yours and the LOCK go to the buyer. Without payment, everything comes back to you.",
+  "@sellConfirm": {"placeholders":{"lock":{"type":"String"},"usd":{"type":"String"}}},
+  "sellDone": "Reserved! The buyer has 12 hours to pay. Without payment, your LOCK come back by themselves.",
+  "toPayTitle": "Someone sold to you: pay now",
+  "payNow": "Pay",
+  "pcLkHoursLog": "Hours on — today {today} · yesterday {yesterday} · 7 days {week} · 30 days {month}",
+  "@pcLkHoursLog": {"placeholders":{"today":{"type":"String"},"yesterday":{"type":"String"},"week":{"type":"String"},"month":{"type":"String"}}},
+  "emTitle": "Coin release",
+  "emIntro": "Live numbers from the blockchain. Nobody can change these rules.",
+  "emExisting": "LOCK that exist today",
+  "emRemaining": "Still to be released",
+  "emNow": "Being released now",
+  "emRate": "{hour} per hour · {day} per day · {week} per week",
+  "@emRate": {"placeholders":{"hour":{"type":"String"},"day":{"type":"String"},"week":{"type":"String"}}},
+  "emNextHalf": "Release drops to half on",
+  "emEnd": "The 30 years end on",
+  "emPeriods": "The 30 years, in periods of 5 years",
+  "emStart": "At the start (first block)",
+  "emFounder": "Creator (1%), in the first block",
+  "emYears": "Years {from}–{to}",
+  "@emYears": {"placeholders":{"from":{"type":"String"},"to":{"type":"String"}}},
+  "emMax": "Maximum, forever",
+  "emNote": "Every second a few new LOCK are created and, every hour, shared among all the blockchain LockKeepers switched on. Each month a little less than the month before, so every 5 years half. More people does not create more coins: the same amount is shared by more.",
+  "walletToPhone": "Take this wallet to the phone",
+  "walletToPhoneSteps": "1. On the phone, install EncryptLock and open it.\n2. On the first screen, tap \"I have a wallet on another device (QR code)\".\n3. Point the camera at this code and type the 8 characters below.\n4. Choose the phone's password. Same wallet on both.",
+  "walletToPhoneWarning": "Never show this code to anyone: it holds your wallet. It closes by itself in 3 minutes.",
+  "haveOtherDevice": "I have a wallet on another device (QR code)",
+  "walletCodeAsk": "Type the 8 characters shown on the other device",
+  "walletCodeWrong": "Wrong code, or the code has expired. Show the code again on the other device.",
+  "walletCodeNotWallet": "This is not a wallet code. On the computer: Settings → \"Take this wallet to the phone\".",
+  "walletToPc": "Take this wallet to the computer",
+  "walletToPcSteps": "1. The phone and this computer must be on the same Wi-Fi.\n2. On the phone: Settings → \"Take this wallet to the computer\".\n3. Point the phone's camera at this code.\n4. Type here the 8 characters the phone shows. The wallet comes over the home Wi-Fi, locked by that code; nothing goes through the internet.",
+  "walletToPcCode": "Type this code on the computer:",
+  "walletToPcNotPc": "This is not a computer code. On the computer, on the first screen, choose \"I have a wallet on another device (QR code)\".",
+  "walletToPcFailed": "Could not reach the computer. Are the phone and the computer on the same Wi-Fi? On the computer, allow EncryptLock in the Windows firewall if asked.",
+  "lastTrade": "Last trade: {lock} LOCK for {usd} ({price} per LOCK)",
+  "@lastTrade": {"placeholders":{"lock":{"type":"String"},"usd":{"type":"String"},"price":{"type":"String"}}},
+  "offersCount": "Offers: {count}",
+  "@offersCount": {"placeholders":{"count":{"type":"String"}}},
+  "sendCoin": "Coin",
+  "sendToPolygon": "Recipient's address (0x…, Polygon network)",
+  "invalidPolygonAddress": "This is not a valid Polygon address (starts with 0x, 42 characters).",
+  "confirmSendCoin": "Send {amount} {coin}?",
+  "@confirmSendCoin": {"placeholders":{"amount":{"type":"String"},"coin":{"type":"String"}}},
+  "polygonFeeLine": "Polygon network fee: at most {fee} POL (usually less). It goes to the network, not to EncryptLock.",
+  "@polygonFeeLine": {"placeholders":{"fee":{"type":"String"}}},
+  "polygonSendNote": "On the Polygon network the coins arrive in seconds and this cannot be undone. Check that the address is on the Polygon network.",
+  "polygonSentOk": "Sent. It is already in the recipient's account.",
+  "sendNoPolAmount": "Not enough POL for this amount plus the network fee.",
+  "realPolygon": "Real Polygon network",
+  "realPolygonHint": "USDC and POL with real money (off: test network).",
+  "realPolygonConfirm": "From now on USDC and POL are real money on the Polygon network: what you send cannot be undone. To try it, use only a little (for example 1 USDC and a little POL).",
+  "chipAllowHint": "Now Windows will ask \"Allow this app to make changes?\". Press Yes: it is only used once, to confirm this computer's security chip (one real computer = one LockKeeper).",
+  "chipOk": "Security chip confirmed ({maker}).",
+  "@chipOk": {"placeholders":{"maker":{"type":"String"}}},
+  "chipCancelled": "Without \"Yes\" the security chip cannot be confirmed, and this computer cannot be a LockKeeper. Try again and press Yes.",
+  "chipNotAccepted": "This computer has no accepted security chip (TPM 2.0 from a known maker). Only real computers can be LockKeepers.",
+  "pcLkBehind": "Catching up with the network: {blocks} blocks to go. It earns again once it is up to date.",
+  "@pcLkBehind": {"placeholders":{"blocks":{"type":"int"}}},
+  "pcLkNoChip": "The network has not confirmed this computer's security chip, so it does not accept its \"I am on\". Open the app with internet; if it stays like this, make the computer a LockKeeper again.",
+  "pcLkNotSeen": "The network has not received \"I am on\" from this computer for a while. Check the internet connection; the app keeps trying by itself.",
+  "newVersion": "There is a new version of EncryptLock ({version}). Download it at encryptlock.pages.dev.",
+  "@newVersion": {"placeholders":{"version":{"type":"String"}}},
+  "updateAvailable": "New version {version} available",
+  "@updateAvailable": {"placeholders": {"version": {"type": "String"}}},
+  "updateNow": "Update",
+  "updateDownloading": "Downloading the new version… {percent}%",
+  "@updateDownloading": {"placeholders": {"percent": {"type": "int"}}},
+  "updateFailed": "Could not update. Try again, or download it at encryptlock.pages.dev.",
+  "offerAwaitingDevice": "waiting for your second device",
+  "approveSale": "Sale: {lock} LOCK for {usdc}",
+  "@approveSale": {"placeholders":{"lock":{"type":"String"},"usdc":{"type":"String"}}},
+  "buyWrongNetwork": "This network trades on another Polygon network. Change \"Real Polygon network\" in Settings → Advanced.",
+  "appsTitle": "Apps that work with EncryptLock",
+  "padlockDesc": "App for secure communication and for sending and receiving wallet addresses.",
+  "padlockOpen": "Open on Google Play",
+  "chartFullScreen": "Full screen",
+  "chartExitFullScreen": "Exit full screen",
+  "chartNoTrades": "No trades yet for the chart.",
+  "toolMeasure": "Measure",
+  "toolHLine": "Line",
+  "toolTrend": "Trend line",
+  "toolRect": "Rectangle",
+  "toolClear": "Delete drawings",
+  "noInternet": "No internet",
+  "noInternetSince": "No internet · numbers from {time}",
+  "@noInternetSince": {"placeholders": {"time": {"type": "String"}}},
+  "waitingKeeper": "Waiting for a blockchain LockKeeper to come on",
+  "waitingKeeperSince": "Waiting for a blockchain LockKeeper to come on · numbers from {time}",
+  "@waitingKeeperSince": {"placeholders": {"time": {"type": "String"}}},
+  "orderWaiting": "No blockchain LockKeeper is on right now. Your order waits and is done by itself as soon as one comes on (with the app open). You can cancel it in the market.",
+  "waitingTitle": "Waiting orders",
+  "waitingSell": "Sell {lock} LOCK for {usd}",
+  "@waitingSell": {"placeholders": {"lock": {"type": "String"}, "usd": {"type": "String"}}},
+  "waitingBuy": "Buy {lock} LOCK for {usd}",
+  "@waitingBuy": {"placeholders": {"lock": {"type": "String"}, "usd": {"type": "String"}}},
+  "waitingDone": "Waiting order done: {what}",
+  "@waitingDone": {"placeholders": {"what": {"type": "String"}}},
+  "waitingGone": "Waiting order dropped, the offer is no longer there: {what}",
+  "@waitingGone": {"placeholders": {"what": {"type": "String"}}},
+  "waitingFailed": "Waiting order not done: {what}. {reason}",
+  "@waitingFailed": {"placeholders": {"what": {"type": "String"}, "reason": {"type": "String"}}},
+  "online": "Online",
+  "keepersOnline": "{count, plural, =1{1 blockchain LockKeeper on} other{{count} blockchain LockKeepers on}}",
+  "@keepersOnline": {"placeholders": {"count": {"type": "int"}}},
+  "emReserveTitle": "Everlasting reserve for the LockKeepers (after the 30 years): half of what is left every 30 years",
+  "emReserveRest": "Years {from}–{to}: the rest, down to the last LOCK (around the year {year})",
+  "@emReserveRest": {"placeholders": {"from": {"type": "String"}, "to": {"type": "String"}, "year": {"type": "String"}}},
+  "emLastLock": "Last LOCK of the reserve",
+  "emReserveNote": "After the 30 years the LockKeepers keep earning: the 800,000 LOCK of the reserve come out bit by bit, half of what is left every 30 years — 99.9% by year 330 and the last LOCK around the year {year}, about 1,440 years after the start. The total never goes above 40,000,000.",
+  "@emReserveNote": {"placeholders": {"year": {"type": "String"}}},
+  "devFundHeirNote": "This wallet is the development fund. When the inheritance is carried out, the first heir on the list also receives, for ever, the fund's share of every fee (after a recovery by trusted people, the new wallet does).",
+  "padlockShort": "Padlock · encrypted communication",
+  "padlockSoon": "Padlock: encrypted communication and sending wallet addresses. Coming soon on Google Play."
+}

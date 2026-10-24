@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Update": only the downloaded new version (in the app's cache) is
+     shared with the phone's installer. -->
+<paths>
+    <cache-path name="update" path="." />
+</paths>

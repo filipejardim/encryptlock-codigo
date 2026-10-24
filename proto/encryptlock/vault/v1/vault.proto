@@ -1,0 +1,72 @@
+syntax = "proto3";
+package encryptlock.vault.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "google/api/annotations.proto";
+
+option go_package = "encryptlock/lockkeeper/x/vault/types";
+
+// Time locks (white paper, section 7.4): an account locks coins until a date.
+// Nobody, not even the owner, can move them before; at that date they go back
+// to the owner automatically. Because they cannot leave, "this account holds
+// at least X until date D" is proven for the whole period, not just one
+// instant (proof of reserves). For now the proof is public; the private
+// version (zero-knowledge) comes with the privacy phase.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  rpc Lock(MsgLock) returns (MsgLockResponse);
+}
+
+message MsgLock {
+  option (cosmos.msg.v1.signer) = "owner";
+  option (amino.name) = "encryptlock/vault/MsgLock";
+
+  string owner = 1;
+  // amount in lockunit.
+  uint64 amount = 2;
+  // until: release time, Unix seconds (at most 10 years ahead).
+  int64 until = 3;
+}
+
+message MsgLockResponse {
+  uint64 id = 1;
+}
+
+message Lock {
+  uint64 id = 1;
+  string owner = 2;
+  uint64 amount = 3;
+  int64 created_at = 4;
+  int64 until = 5;
+}
+
+service Query {
+  // Locks lists an account's locks.
+  rpc Locks(QueryLocksRequest) returns (QueryLocksResponse) {
+    option (google.api.http).get = "/encryptlock/vault/v1/locks/{address}";
+  }
+  // Reserves: how much an account has locked until at least a given time.
+  rpc Reserves(QueryReservesRequest) returns (QueryReservesResponse) {
+    option (google.api.http).get = "/encryptlock/vault/v1/reserves/{address}";
+  }
+}
+
+message QueryLocksRequest {
+  string address = 1;
+}
+
+message QueryLocksResponse {
+  repeated Lock locks = 1;
+}
+
+message QueryReservesRequest {
+  string address = 1;
+  int64 until = 2;
+}
+
+message QueryReservesResponse {
+  // amount locked from now until at least `until`, in lockunit.
+  uint64 amount = 1;
+}

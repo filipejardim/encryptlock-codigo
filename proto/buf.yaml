@@ -1,0 +1,7 @@
+version: v2
+modules:
+  - path: .
+    excludes:
+      - third_party
+  # Copies of Cosmos SDK v0.55.0 definitions (Apache-2.0) our files import.
+  - path: third_party

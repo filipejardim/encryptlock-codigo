@@ -1,0 +1,64 @@
+EncryptLock View-Only License
+
+Copyright (c) 2026 Filipe Jardim. All rights reserved.
+
+This repository (the source code, documentation, images and every other file
+in it, together "the Software") is published so that anyone can read it and
+check what EncryptLock does. It is NOT open source and NOT free software.
+
+1. WHAT YOU MAY DO
+
+   a. Read the Software and study it.
+   b. Build it on your own computer only to check that it matches the
+      published EncryptLock apps, and run the tests for the same purpose.
+   c. Report bugs and security problems to the copyright holder
+      (encryptlockoficial@proton.me).
+   d. Quote short parts of it in a review, article or discussion about
+      EncryptLock, naming the source.
+
+2. WHAT YOU MAY NOT DO, FOREVER
+
+   a. Copy, publish, redistribute, sell, rent or sublicense the Software or
+      any part of it, changed or not.
+   b. Modify it, translate it into another programming language, or make any
+      work based on it or derived from it, including by automated means
+      (for example AI tools trained on, prompted with or reproducing it).
+   c. Use the Software or any part of it, its design or its rules to run,
+      launch or operate any blockchain, network, coin, token, wallet or
+      service other than the official EncryptLock network.
+   d. Remove or change this license or the copyright notice.
+
+   Running the official EncryptLock apps published by the copyright holder
+   (from encryptlock.pages.dev, its GitHub releases or the Microsoft Store)
+   is allowed under their own terms and is not limited by this license.
+
+3. GITHUB
+
+   GitHub's Terms of Service let GitHub users view this public repository and
+   fork it within GitHub. That gives no other right: a fork is still covered
+   by this license in full, and nothing in it may be used outside of what
+   section 1 allows.
+
+4. NO EXPIRY
+
+   This license has no end date. It never turns into an open source or free
+   license by itself. Any other permission must be given in writing by the
+   copyright holder.
+
+5. THIRD-PARTY PARTS
+
+   Parts written by others keep their own licenses (for example the Boltz
+   swap contracts in polygon/contracts/boltz, MIT, see their LICENSE file).
+   This license covers everything else.
+
+6. NO WARRANTY
+
+   The Software is provided "as is", without warranty of any kind. The
+   copyright holder is not liable for any claim, damage or loss arising from
+   reading, building or running it.
+
+7. LAW
+
+   This license is governed by the laws of Portugal. Any breach ends every
+   permission given in section 1 at once, and the copyright holder may take
+   down copies and claim damages.
