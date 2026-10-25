@@ -57,6 +57,9 @@ var (
 	roots         = x509.NewCertPool()
 	intermediates = x509.NewCertPool()
 	vendorOf      = map[string]string{} // root subject -> manufacturer folder
+	// The same certificates as lists, to link a certificate to its issuer
+	// by key when the names are written differently (linkByKey).
+	rootList, interList []*x509.Certificate
 )
 
 func init() {
@@ -73,8 +76,10 @@ func init() {
 			if parts[2] == "RootCA" {
 				roots.AddCert(cert)
 				vendorOf[string(cert.RawSubject)] = parts[1]
+				rootList = append(rootList, cert)
 			} else {
 				intermediates.AddCert(cert)
+				interList = append(interList, cert)
 			}
 		}
 		return nil
@@ -341,6 +346,12 @@ func Check(c Chip) (string, error) {
 		for k, v := range vendorOf {
 			vendor[k] = v
 		}
+		chain := []*x509.Certificate{cert}
+		parents := append([]*x509.Certificate{}, interList...)
+		rootsHere := map[*x509.Certificate]string{}
+		for _, r := range rootList {
+			rootsHere[r] = vendorOf[string(r.RawSubject)]
+		}
 		for i := 0; i < 4 && len(top.IssuingCertificateURL) > 0; i++ {
 			up := fetchIssuer(top.IssuingCertificateURL[0])
 			if up == nil {
@@ -351,13 +362,17 @@ func Check(c Chip) (string, error) {
 				if up.maker != "" {
 					opts.Roots.AddCert(up.cert)
 					vendor[string(up.cert.RawSubject)] = up.maker
+					rootsHere[up.cert] = up.maker
 				}
 				top = up.cert
 				break
 			}
 			opts.Intermediates.AddCert(up.cert)
+			parents = append(parents, up.cert)
+			chain = append(chain, up.cert)
 			top = up.cert
 		}
+		linkByKey(append(chain, parents...), parents, rootsHere, &opts, vendor)
 		chains, err = verifyAnyTime(cert, opts)
 	}
 	if err != nil {
@@ -370,6 +385,44 @@ func Check(c Chip) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("%w: Microsoft root outside the Pluton factory line", ErrNotReal)
+}
+
+// linkByKey: some makers write the issuer's name in a certificate with a
+// different encoding than the issuer's own certificate (25 Oct 2026: AMD's
+// "PRG-ZP" family, Ryzen 2000, names its root "AMDTPM" in other bytes). Go
+// links a certificate to its issuer only by the exact bytes of the name, so
+// a real chip was refused. Here an issuer is also found by its key: same key
+// identifier AND the signature checks with its key - the signature is the
+// proof, the name only a label. A copy of the issuer under the name the
+// certificate uses is added to the pools.
+func linkByKey(chain, parents []*x509.Certificate, rootsHere map[*x509.Certificate]string, opts *x509.VerifyOptions, vendor map[string]string) {
+	for _, c := range chain {
+		if len(c.AuthorityKeyId) == 0 {
+			continue
+		}
+		try := func(p *x509.Certificate, root bool, maker string) {
+			if !bytes.Equal(c.AuthorityKeyId, p.SubjectKeyId) || bytes.Equal(c.RawIssuer, p.RawSubject) || c.CheckSignatureFrom(p) != nil {
+				return
+			}
+			alias := *p
+			alias.RawSubject = c.RawIssuer
+			// A pool keeps one copy per certificate bytes: mark the copy so it is
+			// not taken for the original (only the pool reads these bytes).
+			alias.Raw = append(append([]byte{}, p.Raw...), c.RawIssuer...)
+			if root {
+				opts.Roots.AddCert(&alias)
+				vendor[string(alias.RawSubject)] = maker
+			} else {
+				opts.Intermediates.AddCert(&alias)
+			}
+		}
+		for p, maker := range rootsHere {
+			try(p, true, maker)
+		}
+		for _, p := range parents {
+			try(p, false, "")
+		}
+	}
 }
 
 // selfSigned: a root certificate (it signs itself).

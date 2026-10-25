@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"io/fs"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 )
@@ -56,5 +57,23 @@ func TestRootMakersOnlyChipMakers(t *testing.T) {
 		if got := rootMaker(u); got != want {
 			t.Errorf("%s: %q, want %q", host, got, want)
 		}
+	}
+}
+
+// AMD's "PRG-ZP" family (Ryzen 2000) names its root in other bytes than the
+// root's own certificate: the issuer is found by its key and signature
+// (25 Oct 2026, a real chip of this family was refused).
+func TestIssuerNameInOtherBytes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("needs the internet")
+	}
+	raw, err := os.ReadFile("testdata/AMD-fTPM-ICA-PRG-ZP.cer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ica := parseCerts(raw)[0]
+	maker, err := Check(Chip{Modulus: ica.PublicKey.(*rsa.PublicKey).N.Bytes(), Cert: ica.Raw})
+	if err != nil || maker != "AMD" {
+		t.Fatalf("maker %q, err %v", maker, err)
 	}
 }
