@@ -10,6 +10,7 @@ import '../app_state.dart';
 import '../core/biometric.dart';
 import '../core/network_pin.dart';
 import '../core/network.dart' show AccountStatus, ChainError;
+import '../core/version.dart' show appVersion;
 import '../core/pc_lockkeeper.dart';
 import '../core/polygon.dart';
 import '../core/startup.dart';
@@ -988,6 +989,16 @@ class _AppsCard extends StatelessWidget {
                     : () => launchUrl(padlockUrl!, mode: LaunchMode.externalApplication),
               ),
             ],
+          ),
+        ),
+        // Which version this is (25 Oct 2026: nobody could tell whether an
+        // update had really been installed).
+        Padding(
+          padding: const EdgeInsets.only(top: 18, bottom: 8),
+          child: Text(
+            'EncryptLock $appVersion',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Brand.neonBlue, fontSize: 13),
           ),
         ),
       ],

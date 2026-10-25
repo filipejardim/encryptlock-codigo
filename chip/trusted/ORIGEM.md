@@ -19,3 +19,11 @@ the processor), from http://ftpm.amd.com/pki/aia/264D39A23CEB5D5B49D610044EEBD12
   "Pluton Factory ... EK ICA" certificates (chip.go, plutonOK).
 - The six older STMicro intermediates without "_2" have a malformed serial
   number that Go refuses; ST reissued them (the "_2" files), which are read.
+
+25 Oct 2026: compared with the TrustedTpm.cab of 23 Oct 2026 (2582 files).
+Only new for hardware makers: Intel DICE (newest Intel processors) -
+RootCA/DCP_DICE_Global_RootCA.cer, RootCA/Intel_DICE_SubCA_CAID343_1_001.cer,
+IntermediateCA/DICE_CSME_NVL_P_00004632_001.cer and ..._00004647_001.cer.
+AMD was identical. Roots not in the list are now also taken from the chip
+maker's own site over https (chip.go, rootMakers), after a real AMD chip was
+refused because its family's root is published only on ftpm.amd.com.

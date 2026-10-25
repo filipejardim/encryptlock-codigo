@@ -115,6 +115,7 @@ class PcLockKeeperCard extends StatelessWidget {
     }
 
     final r = state.rotation;
+    final behind = state.pcLockKeeperOn && (state.pcBehind ?? 0) > 30;
     return Padding(
       padding: const EdgeInsets.only(top: 20),
       child: NeonCard(
@@ -148,19 +149,16 @@ class PcLockKeeperCard extends StatelessWidget {
                 activeThumbColor: Brand.neonGreen,
                 onChanged: (v) => state.setPcAutostart(v),
               ),
-            if (state.pcLockKeeperOn && r != null) ...[
-              Text(
-                r.signing ? '✍️ ${t.pcLkSigning}' : '🔎 ${t.pcLkWaiting}',
-                style: const TextStyle(color: Brand.text),
-              ),
-              const SizedBox(height: 4),
-            ],
-            // Something to know: behind the network, chip not confirmed, or
-            // no "I am on" reaching the network.
-            if (state.pcLockKeeperOn && (state.pcBehind ?? 0) > 30)
-              _Warning('⏳ ${t.pcLkBehind(state.pcBehind!)}', Brand.neonBlue)
-            // Only when the open wallet is the LockKeeper's owner (another wallet
-            // has nothing to prove).
+            // At a glance (founder, 25 Oct 2026): a green or red light for
+            // "connected", and for signing while it is up to date (behind,
+            // "signing" would only confuse: 24 Oct a friend saw both).
+            if (state.pcLockKeeperOn && (r != null || behind))
+              PcLockKeeperLights(rotation: r, behind: behind ? state.pcBehind : null),
+            // Something else to know: chip not confirmed, or no "I am on"
+            // reaching the network. Only when the open wallet is the
+            // LockKeeper's owner (another wallet has nothing to prove).
+            if (behind)
+              const SizedBox.shrink()
             else if (state.pcLockKeeperOn && r != null && !r.chip && (state.status?.isLockKeeper ?? false))
               _Warning('⚠️ ${t.pcLkNoChip}', Brand.danger)
             else if (state.pcNotSeen)
@@ -168,6 +166,69 @@ class PcLockKeeperCard extends StatelessWidget {
             if (r != null) HoursLog(r),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The LockKeeper's state at a glance: connected, and signing (or waiting
+/// for its turn); while catching up (behind: blocks to go), what to do
+/// instead of "signing", which would only confuse.
+class PcLockKeeperLights extends StatelessWidget {
+  const PcLockKeeperLights({super.key, this.rotation, this.behind});
+
+  final LockKeeperRotation? rotation;
+  final int? behind;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final r = rotation;
+    final late = behind != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (r != null) ...[
+          _Light(on: r.online && !late, text: r.online && !late ? t.pcLkConnected : t.pcLkNotConnected),
+          if (r.online && !late) _Light(on: r.signing, text: r.signing ? t.pcLkSigning : t.pcLkWaiting, waiting: !r.signing),
+          const SizedBox(height: 6),
+        ],
+        // Last step when nothing helps: write to us (the address needs no
+        // translation).
+        if (late) _Warning('⏳ ${t.pcLkBehind(behind!)}\n${t.pcLkBehindHelp}\n✉️ encryptlockoficial@proton.me', Brand.neonBlue),
+      ],
+    );
+  }
+}
+
+/// A status line with a light: green when all is well, red when not, amber
+/// while waiting for its turn to sign (normal, it still earns).
+class _Light extends StatelessWidget {
+  const _Light({required this.on, required this.text, this.waiting = false});
+
+  final bool on;
+  final bool waiting;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = on ? Brand.neonGreen : (waiting ? const Color(0xFFF2D27A) : Brand.danger);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: color.withValues(alpha: 0.7), blurRadius: 8)],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: const TextStyle(color: Brand.text, fontWeight: FontWeight.w600))),
+        ],
       ),
     );
   }

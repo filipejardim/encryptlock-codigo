@@ -78,3 +78,19 @@ Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""Get-Process cloud
 ; Turn off "Start with Windows" (the wallet itself stays in the user's
 ; data folder; it only opens with the password or the 24 words).
 Filename: "reg.exe"; Parameters: "delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v EncryptLock /f"; Flags: runhidden; RunOnceId: "RemoveStartup"
+
+[Code]
+// Before copying: stop this app's own LockKeeper and its direct connection
+// (only the programs inside the app's folder, never another copy on this
+// computer). 25 Oct 2026: a friend installed by hand with the LockKeeper on,
+// Windows kept the old lockkeeper.exe ("files in use") and it stayed stuck.
+// The app starts it again when it opens at the end.
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Code: Integer;
+begin
+  // 64-bit PowerShell: a 32-bit one cannot see the path of 64-bit programs.
+  Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), '-NoProfile -Command "Get-Process lockkeeper, cloudflared -ErrorAction SilentlyContinue | Where-Object { $_.Path -like ''' + ExpandConstant('{app}') + '\*'' } | Stop-Process -Force"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Sleep(1500);
+  Result := '';
+end;

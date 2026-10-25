@@ -54,6 +54,23 @@
   .dot.off { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
   .note { color: var(--pearl); font-size: 13px; text-align: center; margin: 28px 0 10px; opacity: .9; }
   .err { color: var(--danger); text-align: center; padding: 12px; }
+  /* Network map: the LockKeepers as chips wired to the network's core. */
+  #mapBox { position: relative; height: min(560px, 75vh); padding: 0; overflow: hidden; background: #0A1215; }
+  #mapBox:fullscreen { height: 100vh; clip-path: none; }
+  #map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #map.drag { cursor: grabbing; }
+  .mapbar { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 2; }
+  .mapbar button { width: 38px; height: 38px; background: rgba(16,23,31,.9); color: var(--mint); border: 1px solid #2E5A4C;
+    font-size: 18px; cursor: pointer; box-shadow: 0 0 10px rgba(148,247,209,.15); }
+  .mapbar button:hover { border-color: var(--mint); }
+  .maplegend { position: absolute; left: 14px; bottom: 12px; z-index: 2; color: var(--pearl); font-size: 13px;
+    background: rgba(10,18,21,.8); padding: 8px 10px; border: 1px solid rgba(46,90,76,.6); }
+  .maplegend b { color: var(--letters); }
+  .maplegend .dot { margin-left: 8px; }
+  .dot.wait { background: #F2D27A; box-shadow: 0 0 8px #F2D27A; }
+  #mapTip { position: absolute; z-index: 3; pointer-events: none; background: rgba(10,18,21,.95); color: #fff; font-size: 13px;
+    border: 1px solid var(--mint); padding: 8px 10px; white-space: nowrap; box-shadow: 0 0 14px rgba(148,247,209,.3); }
+  @media (max-width: 520px) { .maplegend { font-size: 12px; right: 14px; } }
 </style>
 </head>
 <body>
@@ -81,6 +98,17 @@
     <div class="wrap"><div class="frame"><div class="label" id="t-blocktime"></div>
       <div class="value" id="blocktime">—</div><div class="sub" id="t-blocktimeSub"></div></div></div>
   </div>
+
+  <h2 id="t-map"></h2>
+  <div class="wrap"><div class="frame" id="mapBox">
+    <canvas id="map"></canvas>
+    <div class="mapbar">
+      <button id="zin" aria-label="+">+</button><button id="zout" aria-label="−">−</button>
+      <button id="zreset" aria-label="⟳">⟳</button><button id="zfull" aria-label="⛶">⛶</button>
+    </div>
+    <div class="maplegend" id="mapLegend"></div>
+    <div id="mapTip" hidden></div>
+  </div></div>
 
   <div class="cols">
     <section>
@@ -131,7 +159,9 @@ const T = {
     recent: "LATEST BLOCKS", block: "Block", time: "Time", txs: "Transactions", lockkeepers: "LOCKKEEPERS",
     name: "Name", share: "Share of the new LOCK", guarantee: "In guarantee",
     privacy: "This explorer only shows what keeps the network transparent. It never shows who owns which address or how much an address holds.",
-    error: "Cannot reach the LockKeeper at {n}.", ago: "{s} s ago" },
+    error: "Cannot reach the LockKeeper at {n}.", ago: "{s} s ago",
+    map: "NETWORK MAP", mapCount: "{n} LockKeepers", signing: "signing", waiting: "on, waiting for its turn", off: "off",
+    core: "NETWORK", tipGuarantee: "Guarantee: {g} LOCK" },
   pt: { explorer: "Explorador", tagline: "Estatísticas públicas da rede. Sem donos, sem saldos.",
     status: "Último bloco", live: "Ao vivo", stale: "Sem bloco novo há {s} s", supply: "LOCK que já existem",
     ofMax: "{p}% dos 40.000.000 que alguma vez vão existir", keepers: "LockKeepers ativos",
@@ -139,7 +169,9 @@ const T = {
     recent: "ÚLTIMOS BLOCOS", block: "Bloco", time: "Hora", txs: "Transações", lockkeepers: "LOCKKEEPERS",
     name: "Nome", share: "Parte dos LOCK novos", guarantee: "Em garantia",
     privacy: "Este explorador só mostra o que mantém a rede transparente. Nunca mostra quem é dono de que endereço nem quanto tem um endereço.",
-    error: "Sem resposta do LockKeeper em {n}.", ago: "há {s} s" },
+    error: "Sem resposta do LockKeeper em {n}.", ago: "há {s} s",
+    map: "MAPA DA REDE", mapCount: "{n} LockKeepers", signing: "a assinar", waiting: "ligado, à espera da vez", off: "desligado",
+    core: "REDE", tipGuarantee: "Garantia: {g} LOCK" },
 };
 const NAMES = { en: "English", pt: "Português (Portugal)" };
 let lang = (localStorage.getItem("lang") || navigator.language || "en").slice(0, 2);
@@ -172,12 +204,12 @@ function earningShares(vals) {
 
 function texts() {
   document.documentElement.lang = lang;
-  for (const k of ["explorer","tagline","status","supply","keepers","blocktime","blocktimeSub","recent","block","time","txs","lockkeepers","name","share","guarantee","privacy"])
+  for (const k of ["explorer","tagline","status","supply","keepers","blocktime","blocktimeSub","recent","block","time","txs","lockkeepers","name","share","guarantee","privacy","map"])
     document.getElementById("t-" + k).textContent = t(k);
 }
 const sel = document.getElementById("lang");
 for (const [k, n] of Object.entries(NAMES)) sel.add(new Option(n, k, k === lang, k === lang));
-sel.onchange = () => { lang = sel.value; localStorage.setItem("lang", lang); texts(); refresh(); };
+sel.onchange = () => { lang = sel.value; localStorage.setItem("lang", lang); texts(); refresh(); refreshMap(); };
 texts();
 
 const get = async (path) => { const r = await fetch((await node()) + path); if (!r.ok) throw new Error(r.status); return r.json(); };
@@ -229,6 +261,164 @@ async function refresh() {
 }
 refresh();
 setInterval(refresh, 4000);
+
+// Network map (founder's idea, 25 Oct 2026): a wire globe turning slowly
+// behind the network's core, every LockKeeper a chip wired to it, light
+// pulses running to the core. Green: signing; amber: on, waiting for its
+// turn; red: off. Zoom with the buttons, the wheel or two fingers; drag to
+// move; full screen. Only what the network makes public (address, guarantee,
+// on / signing): never owners or balances.
+const BECH = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+function bechPoly(v) { const G = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]; let c = 1;
+  for (const x of v) { const b = c >>> 25; c = ((c & 0x1ffffff) << 5) ^ x; for (let i = 0; i < 5; i++) if ((b >> i) & 1) c ^= G[i]; } return c; }
+// lockvaloper1… -> lock1… (same key, the account prefix).
+function accountOf(valoper) {
+  const data = [...valoper.slice(valoper.lastIndexOf("1") + 1, -6)].map((ch) => BECH.indexOf(ch));
+  const hrp = "lock", ex = [...hrp].map((c) => c.charCodeAt(0) >> 5).concat([0], [...hrp].map((c) => c.charCodeAt(0) & 31));
+  const p = bechPoly(ex.concat(data, [0, 0, 0, 0, 0, 0])) ^ 1;
+  const sum = [0, 1, 2, 3, 4, 5].map((i) => (p >>> (5 * (5 - i))) & 31);
+  return hrp + "1" + data.concat(sum).map((d) => BECH[d]).join("");
+}
+
+const MAP = { keepers: [], zoom: 1, panX: 0, panY: 0, hover: null };
+const mapCv = document.getElementById("map"), mapX = mapCv.getContext("2d"), mapBox = document.getElementById("mapBox");
+const CORE = new Image(); CORE.src = "assets/icon.png";
+const COL = { sign: "#94F7D1", wait: "#F2D27A", off: "#FF5C6C" };
+
+async function refreshMap() {
+  try {
+    const vals = (await get("/cosmos/staking/v1beta1/validators?pagination.limit=500")).validators;
+    const out = await Promise.all(vals.map(async (v) => {
+      const acc = accountOf(v.operator_address);
+      let st = {};
+      try { st = await get(`/encryptlock/rotation/v1/status/${acc}`); } catch { /* shown as off */ }
+      return { acc, tokens: v.tokens / UNIT, state: st.signing && !v.jailed ? "sign" : st.online ? "wait" : "off" };
+    }));
+    out.sort((a, b) => a.acc.localeCompare(b.acc)); // stable places between refreshes
+    MAP.keepers = out;
+    const n = (s) => out.filter((k) => k.state === s).length;
+    document.getElementById("mapLegend").innerHTML = `<b>${t("mapCount", { n: fmt(out.length) })}</b>` +
+      `<span class="dot"></span>${fmt(n("sign"))} ${t("signing")}` +
+      `<span class="dot wait"></span>${fmt(n("wait"))} ${t("waiting")}` +
+      `<span class="dot off"></span>${fmt(n("off"))} ${t("off")}`;
+  } catch { /* the error line above already says it */ }
+}
+
+// Where each chip sits: rings around the core, more chips per outer ring.
+function chipPlaces(n, R) {
+  const out = []; let ring = 0, i = 0;
+  while (i < n) {
+    const r = R * (0.42 + ring * 0.2), per = Math.max(6, Math.floor(2 * Math.PI * r / 70));
+    const here = Math.min(per, n - i);
+    for (let k = 0; k < here; k++, i++) {
+      const a = -Math.PI / 2 + (k / here) * 2 * Math.PI + ring * 0.35;
+      out.push([Math.cos(a) * r, Math.sin(a) * r]);
+    }
+    ring++;
+  }
+  return out;
+}
+
+function chip(x, cx, cy, s, color, glow) {
+  x.save(); x.translate(cx, cy);
+  x.strokeStyle = color; x.lineWidth = 2; x.shadowColor = color; x.shadowBlur = glow;
+  for (let k = -1; k <= 1; k++) { // pins on the four sides
+    const o = k * s * 0.3;
+    x.beginPath(); x.moveTo(o, -s / 2); x.lineTo(o, -s / 2 - 6); x.moveTo(o, s / 2); x.lineTo(o, s / 2 + 6);
+    x.moveTo(-s / 2, o); x.lineTo(-s / 2 - 6, o); x.moveTo(s / 2, o); x.lineTo(s / 2 + 6, o); x.stroke();
+  }
+  x.fillStyle = "#10171F"; x.beginPath(); x.roundRect(-s / 2, -s / 2, s, s, 4); x.fill(); x.stroke();
+  x.shadowBlur = 0; x.strokeStyle = color + "88"; x.beginPath(); x.roundRect(-s / 4, -s / 4, s / 2, s / 2, 2); x.stroke();
+  x.restore();
+}
+
+function drawMap(now) {
+  const dpr = devicePixelRatio || 1, W = mapCv.clientWidth, H = mapCv.clientHeight;
+  if (mapCv.width !== W * dpr || mapCv.height !== H * dpr) { mapCv.width = W * dpr; mapCv.height = H * dpr; }
+  const x = mapX; x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H);
+  const T = now / 1000, R = Math.min(W, H) * 0.46;
+  x.save(); x.translate(W / 2 + MAP.panX, H / 2 + MAP.panY); x.scale(MAP.zoom, MAP.zoom);
+
+  // The world: a wire globe turning slowly.
+  x.lineWidth = 1 / MAP.zoom; x.strokeStyle = "rgba(88,168,145,.22)";
+  x.beginPath(); x.arc(0, 0, R * 0.92, 0, 2 * Math.PI); x.stroke();
+  for (let lat = -60; lat <= 60; lat += 30) {
+    const y = R * 0.92 * Math.sin(lat * Math.PI / 180), rx = R * 0.92 * Math.cos(lat * Math.PI / 180);
+    x.beginPath(); x.ellipse(0, y, rx, rx * 0.12, 0, 0, 2 * Math.PI); x.stroke();
+  }
+  for (let m = 0; m < 6; m++) {
+    const a = (m / 6) * Math.PI + T * 0.08, rx = Math.abs(Math.cos(a)) * R * 0.92;
+    x.beginPath(); x.ellipse(0, 0, rx, R * 0.92, 0, 0, 2 * Math.PI); x.stroke();
+  }
+
+  const places = chipPlaces(MAP.keepers.length, R);
+  // Wires and pulses to the core.
+  MAP.keepers.forEach((k, i) => {
+    const [px, py] = places[i], col = COL[k.state];
+    x.strokeStyle = k.state === "off" ? "rgba(255,92,108,.25)" : col + "66"; x.lineWidth = 1.5 / MAP.zoom;
+    x.setLineDash(k.state === "off" ? [4, 6] : []); x.beginPath(); x.moveTo(px, py); x.lineTo(0, 0); x.stroke(); x.setLineDash([]);
+    if (k.state !== "off") {
+      const f = (T * (k.state === "sign" ? 0.6 : 0.3) + i * 0.137) % 1;
+      x.fillStyle = col; x.shadowColor = col; x.shadowBlur = 12;
+      x.beginPath(); x.arc(px * (1 - f), py * (1 - f), 3, 0, 2 * Math.PI); x.fill(); x.shadowBlur = 0;
+    }
+  });
+  // The core.
+  const pulse = 0.5 + 0.5 * Math.sin(T * 2);
+  x.fillStyle = "rgba(148,247,209,.10)"; x.beginPath(); x.arc(0, 0, 46 + pulse * 8, 0, 2 * Math.PI); x.fill();
+  chip(x, 0, 0, 58, "#94F7D1", 18 + pulse * 10);
+  if (CORE.complete && CORE.naturalWidth) { x.save(); x.beginPath(); x.roundRect(-24, -24, 48, 48, 4); x.clip(); x.drawImage(CORE, -24, -24, 48, 48); x.restore(); }
+  x.fillStyle = "#ABF0C0"; x.font = "800 11px system-ui"; x.textAlign = "center"; x.fillText(t("core"), 0, 50);
+  // The LockKeepers.
+  MAP.keepers.forEach((k, i) => {
+    const [px, py] = places[i];
+    chip(x, px, py, MAP.hover === i ? 30 : 24, COL[k.state], k.state === "sign" ? 10 + pulse * 6 : 6);
+  });
+  x.restore();
+  requestAnimationFrame(drawMap);
+}
+
+// Zoom, drag, pinch, hover, full screen.
+const zoomBy = (f) => { MAP.zoom = Math.min(6, Math.max(0.4, MAP.zoom * f)); };
+document.getElementById("zin").onclick = () => zoomBy(1.25);
+document.getElementById("zout").onclick = () => zoomBy(0.8);
+document.getElementById("zreset").onclick = () => { MAP.zoom = 1; MAP.panX = MAP.panY = 0; };
+document.getElementById("zfull").onclick = () => (document.fullscreenElement ? document.exitFullscreen() : mapBox.requestFullscreen?.());
+mapCv.addEventListener("wheel", (e) => { e.preventDefault(); zoomBy(e.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
+const pointers = new Map(); let pinch = 0;
+mapCv.addEventListener("pointerdown", (e) => { mapCv.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); mapCv.classList.add("drag"); });
+mapCv.addEventListener("pointerup", (e) => { pointers.delete(e.pointerId); pinch = 0; if (!pointers.size) mapCv.classList.remove("drag"); });
+mapCv.addEventListener("pointercancel", (e) => { pointers.delete(e.pointerId); pinch = 0; });
+mapCv.addEventListener("pointermove", (e) => {
+  const prev = pointers.get(e.pointerId);
+  if (prev) {
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (pinch) zoomBy(d / pinch); pinch = d;
+    } else { MAP.panX += e.clientX - prev[0]; MAP.panY += e.clientY - prev[1]; }
+  }
+  // Which chip is under the pointer.
+  const r = mapCv.getBoundingClientRect(), W = r.width, H = r.height, R = Math.min(W, H) * 0.46;
+  const mx = (e.clientX - r.left - W / 2 - MAP.panX) / MAP.zoom, my = (e.clientY - r.top - H / 2 - MAP.panY) / MAP.zoom;
+  const places = chipPlaces(MAP.keepers.length, R);
+  const i = places.findIndex(([px, py]) => Math.abs(px - mx) < 18 && Math.abs(py - my) < 18);
+  MAP.hover = i >= 0 ? i : null;
+  const tip = document.getElementById("mapTip");
+  if (i >= 0) {
+    const k = MAP.keepers[i];
+    tip.innerHTML = `<b>${esc(k.acc.slice(0, 10))}…${esc(k.acc.slice(-4))}</b><br>` +
+      `<span class="dot${k.state === "sign" ? "" : k.state === "wait" ? " wait" : " off"}"></span>${t(k.state === "sign" ? "signing" : k.state === "wait" ? "waiting" : "off")}<br>` +
+      t("tipGuarantee", { g: fmt(k.tokens, 2) });
+    const bx = mapBox.getBoundingClientRect();
+    tip.style.left = Math.min(e.clientX - bx.left + 14, bx.width - 200) + "px"; tip.style.top = (e.clientY - bx.top + 14) + "px";
+    tip.hidden = false;
+  } else tip.hidden = true;
+});
+mapCv.addEventListener("pointerleave", () => { MAP.hover = null; document.getElementById("mapTip").hidden = true; });
+
+refreshMap(); setInterval(refreshMap, 20000);
+requestAnimationFrame(drawMap);
 
 // Circuit-board background like the app: parallel trace bundles from the
 // sides with 45° bends and pads, mirrored left/right, centre kept clear.

@@ -226,15 +226,63 @@ func fromMaker(raw string) bool {
 	return false
 }
 
-func fetchIssuer(u string) *x509.Certificate {
+// rootMakers: the chip makers whose own servers may also hand over the
+// top certificate (the root) of a chain, when it is not in trusted/ (25 Oct
+// 2026: a real AMD chip was refused, its processor family's root is published
+// only on ftpm.amd.com, not in Microsoft's list). Only the makers' own sites,
+// only over https: never Microsoft (it also signs virtual chips) nor a public
+// certificate authority such as GlobalSign (it signs anything for anyone).
+var rootMakers = map[string]string{"amd.com": "AMD", "intel.com": "Intel", "infineon.com": "Infineon",
+	"st.com": "STMicro", "nuvoton.com": "Nuvoton", "qualcomm.com": "QC", "microchip.com": "Atmel",
+	"atmel.com": "Atmel", "nationz.com.cn": "NationZ", "nsing.com.sg": "NationZ"}
+
+// rootMaker returns the maker whose site u is ("" if none of rootMakers).
+func rootMaker(u *url.URL) string {
+	host := strings.ToLower(u.Hostname())
+	for site, maker := range rootMakers {
+		if host == site || strings.HasSuffix(host, "."+site) {
+			return maker
+		}
+	}
+	return ""
+}
+
+// fetched is an in-between certificate taken from a maker's site; maker is
+// set when it came over https from one of rootMakers.
+type fetched struct {
+	cert  *x509.Certificate
+	maker string
+}
+
+// fetchIssuer gets the certificate at u, trying https first (the makers'
+// addresses inside certificates are mostly plain http).
+func fetchIssuer(u string) *fetched {
 	if !fromMaker(u) {
 		return nil
 	}
+	tries := []string{u}
+	if strings.HasPrefix(u, "http://") {
+		tries = []string{"https://" + strings.TrimPrefix(u, "http://"), u}
+	}
+	for _, try := range tries {
+		if c := getCert(try); c != nil {
+			f := &fetched{cert: c}
+			if p, err := url.Parse(try); err == nil && p.Scheme == "https" {
+				f.maker = rootMaker(p)
+			}
+			return f
+		}
+	}
+	return nil
+}
+
+func getCert(u string) *x509.Certificate {
 	client := &http.Client{
-		Timeout: 10 * time.Second,
-		// Redirects must stay on the makers' sites too.
+		Timeout: 15 * time.Second,
+		// Redirects must stay on the makers' sites too (and on https when
+		// the first address was https).
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) > 3 || !fromMaker(req.URL.String()) {
+			if len(via) > 3 || !fromMaker(req.URL.String()) || (via[0].URL.Scheme == "https" && req.URL.Scheme != "https") {
 				return http.ErrUseLastResponse
 			}
 			return nil
@@ -279,32 +327,54 @@ func Check(c Chip) (string, error) {
 		Intermediates: intermediates,
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
+	vendor := vendorOf
 	chains, err := verifyAnyTime(cert, opts)
+	top := cert
 	if err != nil {
 		// Not every manufacturer's in-between certificate is in the list:
 		// fetch them from the address in the certificate. That is safe: the
-		// chain must still end at a manufacturer's root in trusted/.
+		// chain must still end at a manufacturer's root, in trusted/ or
+		// handed over by the maker's own site over https (rootMakers).
 		opts.Intermediates = intermediates.Clone()
-		for c, i := cert, 0; i < 4 && len(c.IssuingCertificateURL) > 0; i++ {
-			up := fetchIssuer(c.IssuingCertificateURL[0])
+		opts.Roots = roots.Clone()
+		vendor = map[string]string{}
+		for k, v := range vendorOf {
+			vendor[k] = v
+		}
+		for i := 0; i < 4 && len(top.IssuingCertificateURL) > 0; i++ {
+			up := fetchIssuer(top.IssuingCertificateURL[0])
 			if up == nil {
 				break
 			}
-			up.UnhandledCriticalExtensions = nil
-			opts.Intermediates.AddCert(up)
-			c = up
+			up.cert.UnhandledCriticalExtensions = nil
+			if selfSigned(up.cert) {
+				if up.maker != "" {
+					opts.Roots.AddCert(up.cert)
+					vendor[string(up.cert.RawSubject)] = up.maker
+				}
+				top = up.cert
+				break
+			}
+			opts.Intermediates.AddCert(up.cert)
+			top = up.cert
 		}
 		chains, err = verifyAnyTime(cert, opts)
 	}
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrNotReal, err)
+		return "", fmt.Errorf("%w: %v (last certificate reached: %q, issued by %q, key %X, from %v)", ErrNotReal, err,
+			top.Subject.CommonName, top.Issuer.CommonName, top.AuthorityKeyId, top.IssuingCertificateURL)
 	}
 	for _, chain := range chains {
 		if plutonOK(chain) {
-			return vendorOf[string(chain[len(chain)-1].RawSubject)], nil
+			return vendor[string(chain[len(chain)-1].RawSubject)], nil
 		}
 	}
 	return "", fmt.Errorf("%w: Microsoft root outside the Pluton factory line", ErrNotReal)
+}
+
+// selfSigned: a root certificate (it signs itself).
+func selfSigned(c *x509.Certificate) bool {
+	return bytes.Equal(c.RawSubject, c.RawIssuer) && c.CheckSignatureFrom(c) == nil
 }
 
 // plutonRoot is Microsoft's root for Pluton, the security chip inside newer

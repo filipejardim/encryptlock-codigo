@@ -1,5 +1,5 @@
 /// This app's version (the same as pubspec.yaml; a test checks it).
-const appVersion = '1.0.10';
+const appVersion = '1.0.11';
 
 /// Where the website says which version is the newest and the SHA-256 of
 /// its files (core/updater.dart). Published with the site (site/versao.json).

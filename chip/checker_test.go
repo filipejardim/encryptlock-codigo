@@ -46,3 +46,17 @@ func TestCheckerSignsOnlyRightAnswersOnce(t *testing.T) {
 		t.Fatalf("ticket does not verify: %+v", tk)
 	}
 }
+
+// A refused chip's certificate is kept with the reason, so a real chip that
+// fails can be fixed without asking its owner for anything.
+func TestRefusedChipIsKept(t *testing.T) {
+	c := &Checker{sessions: map[string]session{}, refusedDir: filepath.Join(t.TempDir(), "chip-refused")}
+	ch := Chip{Modulus: []byte{1, 2, 3}, Cert: []byte("not a certificate")}
+	if _, err := c.Ask(QuestionRequest{Account: sdk.AccAddress(make([]byte, 20)).String(), Modulus: ch.Modulus, Cert: ch.Cert}, "1.2.3.4"); err == nil {
+		t.Fatal("junk accepted")
+	}
+	files, _ := os.ReadDir(c.refusedDir)
+	if len(files) != 2 {
+		t.Fatalf("%d files kept, want the certificate and the reason", len(files))
+	}
+}

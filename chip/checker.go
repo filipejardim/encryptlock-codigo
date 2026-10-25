@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -90,6 +91,11 @@ type Checker struct {
 
 	mu       sync.Mutex
 	sessions map[string]session
+
+	// refusedDir keeps the certificates of chips the checker refused, with
+	// the reason, so a real chip that fails can be fixed without asking its
+	// owner for anything ("": not kept).
+	refusedDir string
 }
 
 type session struct {
@@ -115,7 +121,8 @@ func LoadChecker(path, chainID string) (*Checker, error) {
 	if err != nil || len(seed) != ed25519.SeedSize {
 		return nil, errors.New("chip checker: bad key file")
 	}
-	return &Checker{key: ed25519.NewKeyFromSeed(seed), chainID: chainID, sessions: map[string]session{}}, nil
+	return &Checker{key: ed25519.NewKeyFromSeed(seed), chainID: chainID, sessions: map[string]session{},
+		refusedDir: filepath.Join(filepath.Dir(filepath.Dir(path)), "data", "chip-refused")}, nil
 }
 
 // Ask checks the chip's certificate and makes the secret question. origin
@@ -131,6 +138,7 @@ func (c *Checker) Ask(req QuestionRequest, origin string) (*QuestionResponse, er
 	ch := Chip{Modulus: req.Modulus, Cert: req.Cert}
 	maker, err := Check(ch)
 	if err != nil {
+		c.keepRefused(ch, err)
 		return nil, err
 	}
 	want, q, err := Ask(ch, req.AK)
@@ -153,6 +161,27 @@ func (c *Checker) Ask(req QuestionRequest, origin string) (*QuestionResponse, er
 	}
 	c.sessions[hex.EncodeToString(id)] = session{want: want, code: ch.Code(), maker: maker, account: account, at: time.Now(), origin: origin}
 	return &QuestionResponse{Session: hex.EncodeToString(id), Question: *q}, nil
+}
+
+// maxRefused: at most this many refused certificates are kept (a computer
+// sending junk over and over cannot fill the disk).
+const maxRefused = 200
+
+// keepRefused saves a refused chip's certificate (public, no personal data)
+// and the reason, named by the chip's code.
+func (c *Checker) keepRefused(ch Chip, why error) {
+	if c.refusedDir == "" || len(ch.Cert) == 0 || len(ch.Cert) > 16<<10 {
+		return
+	}
+	if err := os.MkdirAll(c.refusedDir, 0o700); err != nil {
+		return
+	}
+	if files, _ := os.ReadDir(c.refusedDir); len(files) >= 2*maxRefused {
+		return
+	}
+	name := filepath.Join(c.refusedDir, time.Now().UTC().Format("20060102-150405")+"-"+ch.Code()[:16])
+	_ = os.WriteFile(name+".cer", ch.Cert, 0o600)
+	_ = os.WriteFile(name+".txt", []byte(why.Error()+"\n"), 0o600)
 }
 
 // room forgets old questions and refuses a new one when the checker or this
