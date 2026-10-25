@@ -34,10 +34,14 @@ const trustBack = 300
 //     prepared may be gone (the door moves when the founder's computer
 //     restarts, old blocks are deleted after about a day).
 //
-// The founder's computer (no state sync) and any LockKeeper that already
-// joined are never touched.
+// The founder's computer (no state sync, no door-p2p.txt) and any LockKeeper
+// that already joined are never touched.
 func prepareStateSync(cfg *cmtcfg.Config) {
-	if !cfg.StateSync.Enable {
+	// A computer that joined from another home in the first days replayed
+	// the blocks from the first one, with state sync off: it too comes back
+	// from the copy of the state when it missed too much.
+	fromDoor := fileExists(filepath.Join(cfg.RootDir, doorP2PTxt))
+	if !cfg.StateSync.Enable && !fromDoor {
 		return
 	}
 	stateHeight, storeHeight, err := heights(cfg)
@@ -52,9 +56,11 @@ func prepareStateSync(cfg *cmtcfg.Config) {
 	}
 	if stateHeight > 0 {
 		// Switched off for longer than the network keeps whole blocks (about
-		// 40 minutes): nobody can send the blocks it missed and it would wait
-		// forever. It joins again from the copy of the state, like a new
-		// LockKeeper (minutes, a few MB); the signing state file stays.
+		// 40 minutes), or stuck that long while on (rejoin.go): nobody can
+		// send the blocks it missed and it would wait forever. It joins again
+		// from the copy of the state, like a new LockKeeper (minutes, a few
+		// MB); the signing state file stays. The trusted block is taken
+		// before anything is deleted: without internet nothing changes.
 		rpc := doorRPCFromSite()
 		if rpc == "" {
 			return
@@ -62,17 +68,29 @@ func prepareStateSync(cfg *cmtcfg.Config) {
 		if _, earliest, err := doorHeights(rpc); err != nil || !missedTooMuch(storeHeight, earliest) {
 			return
 		}
-		if emptyData(cfg) != nil {
+		h, hash, err := trustedBlock(rpc)
+		if err != nil || emptyData(cfg) != nil {
 			return
 		}
+		useTrusted(cfg, rpc, h, hash)
+		return
 	}
+	// Nothing kept yet (a new LockKeeper, or a rejoin that stopped half way):
+	// from the copy of the state too.
 	if rpc := doorRPCFromSite(); rpc != "" {
 		if h, hash, err := trustedBlock(rpc); err == nil {
-			cfg.StateSync.RPCServers = []string{rpc, rpc}
-			cfg.StateSync.TrustHeight = h
-			cfg.StateSync.TrustHash = hash
+			useTrusted(cfg, rpc, h, hash)
 		}
 	}
+}
+
+// useTrusted makes this start join from the copy of the state, checked
+// against block h of the door.
+func useTrusted(cfg *cmtcfg.Config, rpc string, h int64, hash string) {
+	cfg.StateSync.Enable = true
+	cfg.StateSync.RPCServers = []string{rpc, rpc}
+	cfg.StateSync.TrustHeight = h
+	cfg.StateSync.TrustHash = hash
 }
 
 // heights returns the last block of the saved state and of the block store.

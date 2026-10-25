@@ -81,3 +81,25 @@ func TestRejoinLeavesTheDoorAlone(t *testing.T) {
 		t.Fatal("the door's own LockKeeper was looked at")
 	}
 }
+
+// Stuck with its neighbour: started again only when the network's oldest
+// block is past this computer's newest on two looks in a row, never while
+// it joins from the copy (0) or keeps up.
+func TestStuckWatch(t *testing.T) {
+	var w stuckWatch
+	if w.due(1000, 900) || w.due(1000, 1001) {
+		t.Fatal("restart while the network still keeps its next block")
+	}
+	if w.due(1000, 1500) {
+		t.Fatal("restart on the first look")
+	}
+	if !w.due(1000, 1510) {
+		t.Fatal("no restart on the second look")
+	}
+	if w.due(0, 1600) || w.due(0, 1700) {
+		t.Fatal("restart while joining from the copy")
+	}
+	if w.due(1000, 1500) || w.due(1700, 1600) || w.due(1000, 1500) {
+		t.Fatal("looks not counted again after catching up")
+	}
+}

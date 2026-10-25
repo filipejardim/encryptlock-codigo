@@ -65,6 +65,7 @@ func runPCHeartbeat(cmd *cobra.Command, args []string) error {
 				case <-time.After(doorFollowEvery):
 					followDoor(home)
 					rejoinIfAlone(home)
+					rejoinIfStuck(home)
 				}
 			}
 		}()

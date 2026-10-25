@@ -73,6 +73,13 @@ func rejoinIfAlone(home string) {
 	if !alone.due(time.Now(), peers, ok) {
 		return
 	}
+	restartNode(home, pidFile, pids)
+}
+
+// restartNode stops this computer's LockKeeper and starts it again; the new
+// start (prepareStateSync) joins from the copy of the state if it missed
+// too much.
+func restartNode(home, pidFile string, pids map[string]int) {
 	self, err := os.Executable()
 	if err != nil {
 		return
@@ -93,19 +100,97 @@ func rejoinIfAlone(home string) {
 	}
 }
 
-// neighbours asks this computer's LockKeeper how many neighbours it has
-// (ok = false when it does not answer).
-func neighbours(home string) (int, bool) {
-	cfg, err := os.ReadFile(filepath.Join(home, "config", "config.toml"))
+// A LockKeeper can also be stuck WITH its neighbour: off the internet (or
+// asleep) for longer than the network keeps whole blocks (about 40
+// minutes) while it kept running. Back online it waits for blocks that
+// nobody has any more, shows "catching up" for ever and its "I am on"
+// never reaches the network (24 Oct 2026: a friend's computer, hours, even
+// after reinstalling the app). Only a new start can join from the copy of
+// the state, so when the network's oldest block is past this computer's
+// newest on two looks in a row, it starts again.
+type stuckWatch struct{ looks int }
+
+// due records one look (local: this computer's newest block, 0 while it
+// joins from the copy; earliest: the network's oldest kept block) and
+// reports whether to start it again now.
+func (w *stuckWatch) due(local, earliest int64) bool {
+	if local <= 0 || earliest <= 0 || local+1 >= earliest {
+		w.looks = 0
+		return false
+	}
+	w.looks++
+	if w.looks < 2 {
+		return false
+	}
+	w.looks = 0
+	return true
+}
+
+var stuck stuckWatch
+
+// rejoinIfStuck starts this computer's LockKeeper again when the network no
+// longer keeps the blocks it needs. Same computers as rejoinIfAlone.
+func rejoinIfStuck(home string) {
+	if !fileExists(filepath.Join(home, doorP2PTxt)) {
+		return
+	}
+	pidFile := filepath.Join(home, "running.json")
+	raw, err := os.ReadFile(pidFile)
+	pids := map[string]int{}
+	if err != nil || json.Unmarshal(raw, &pids) != nil || !processAlive(pids["node"]) {
+		return
+	}
+	local, ok := localHeight(home)
+	if !ok {
+		return
+	}
+	rpc := doorRPCFromSite()
+	if rpc == "" {
+		return
+	}
+	_, earliest, err := doorHeights(rpc)
+	if err != nil || !stuck.due(local, earliest) {
+		return
+	}
+	restartNode(home, pidFile, pids)
+}
+
+// localHeight asks this computer's LockKeeper for its newest block (ok =
+// false when it does not answer).
+func localHeight(home string) (int64, bool) {
+	port, ok := localRPCPort(home)
+	if !ok {
+		return 0, false
+	}
+	var status struct {
+		Result struct {
+			SyncInfo struct {
+				Latest string `json:"latest_block_height"`
+			} `json:"sync_info"`
+		} `json:"result"`
+	}
+	c := http.Client{Timeout: netInfoTimeout}
+	res, err := c.Get(fmt.Sprintf("http://127.0.0.1:%s/status", port))
 	if err != nil {
 		return 0, false
 	}
-	m := rpcLaddr.FindSubmatch(cfg)
-	if m == nil {
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK || json.NewDecoder(res.Body).Decode(&status) != nil {
+		return 0, false
+	}
+	h, err := strconv.ParseInt(status.Result.SyncInfo.Latest, 10, 64)
+	return h, err == nil
+}
+
+// neighbours asks this computer's LockKeeper how many neighbours it has
+// (ok = false when it does not answer).
+func neighbours(home string) (int, bool) {
+	port, ok := localRPCPort(home)
+	if !ok {
 		return 0, false
 	}
 	c := http.Client{Timeout: netInfoTimeout}
-	res, err := c.Get(fmt.Sprintf("http://127.0.0.1:%s/net_info", m[1]))
+	res, err := c.Get(fmt.Sprintf("http://127.0.0.1:%s/net_info", port))
 	if err != nil {
 		return 0, false
 	}
@@ -120,4 +205,17 @@ func neighbours(home string) (int, bool) {
 	}
 	n, err := strconv.Atoi(info.Result.NPeers)
 	return n, err == nil
+}
+
+// localRPCPort is the port of this computer's LockKeeper RPC (config.toml).
+func localRPCPort(home string) (string, bool) {
+	cfg, err := os.ReadFile(filepath.Join(home, "config", "config.toml"))
+	if err != nil {
+		return "", false
+	}
+	m := rpcLaddr.FindSubmatch(cfg)
+	if m == nil {
+		return "", false
+	}
+	return string(m[1]), true
 }
