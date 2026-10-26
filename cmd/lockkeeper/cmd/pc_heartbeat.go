@@ -171,8 +171,11 @@ func pcRound(cmd *cobra.Command, wordsFile string) (pcStep, error) {
 		if step == pcChip {
 			// Not accepted (another network, or the chip serves another
 			// account): keep it aside so the other steps go on.
+			// It is tried again after chipRetryAfter (see chipTicket).
 			p := filepath.Join(clientCtx.HomeDir, chipTicketFile)
-			_ = os.Rename(p, p+".refused")
+			if os.Rename(p, p+".refused") == nil {
+				_ = os.Chtimes(p+".refused", time.Now(), time.Now())
+			}
 		}
 		return 0, errors.New(res.RawLog)
 	}
@@ -188,9 +191,20 @@ type chipTicketJSON struct {
 	Ticket  []byte `json:"ticket"`
 }
 
+// chipRetryAfter: a refused chip ticket is tried again after this long (it may
+// be accepted later, e.g. from protocol.ChipMovesFrom when the computer served
+// another account before), so a computer never stays stuck without its chip.
+const chipRetryAfter = time.Hour
+
 // chipTicket reads the ticket for account in home (nil if none).
 func chipTicket(home, account string) *chipTicketJSON {
-	bz, err := os.ReadFile(filepath.Join(home, chipTicketFile))
+	p := filepath.Join(home, chipTicketFile)
+	if st, err := os.Stat(p + ".refused"); err == nil && time.Since(st.ModTime()) >= chipRetryAfter {
+		if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
+			_ = os.Rename(p+".refused", p)
+		}
+	}
+	bz, err := os.ReadFile(p)
 	if err != nil {
 		return nil
 	}

@@ -131,6 +131,8 @@ func call(method string, a args) (any, error) {
 		return core.SignTakeOffer(w, c, acc, seq, a.i("id"), a.s("polygon"), a.s("hash"))
 	case "signLock":
 		return core.SignLock(w, c, acc, seq, a.i("units"), a.i("until"))
+	case "signMoveLockKeeper":
+		return core.SignMoveLockKeeper(w, c, acc, seq, a.s("consPubKey"), a.s("helper"))
 	case "signBecomeLockKeeper":
 		return core.SignBecomeLockKeeper(w, c, acc, seq, a.s("consPubKey"), a.i("units"), a.s("moniker"), a.s("helper"))
 	case "signPolygonSend":

@@ -95,8 +95,8 @@ class _NetworkPanelState extends State<NetworkPanel> {
                       height: 9,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: k.jailed ? Brand.danger : Brand.neonGreen,
-                        boxShadow: k.jailed ? null : Brand.glow(Brand.neonGreen, 0.6),
+                        color: k.jailed ? Brand.danger : (k.online ? Brand.neonGreen : Brand.orange),
+                        boxShadow: Brand.glow(k.jailed ? Brand.danger : (k.online ? Brand.neonGreen : Brand.orange), k.jailed ? 0 : 0.6),
                       ),
                     ),
                     const SizedBox(width: 10),

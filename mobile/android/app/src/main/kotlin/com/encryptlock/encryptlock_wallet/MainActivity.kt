@@ -165,6 +165,12 @@ class MainActivity : FlutterActivity() {
                             call.argument<String>("words")!!, call.argument<String>("chainId")!!,
                             call.argument<String>("accountNumber")!!, long(call, "sequence"), long(call, "units"), long(call, "until")
                         )
+                        // A LockKeeper wallet moves to another computer.
+                        "signMoveLockKeeper" -> Mobilecore.signMoveLockKeeper(
+                            call.argument<String>("words")!!, call.argument<String>("chainId")!!,
+                            call.argument<String>("accountNumber")!!, long(call, "sequence"),
+                            call.argument<String>("consPubKey") ?: "", call.argument<String>("helper")!!
+                        )
                         // Link a computer by QR code: guarantee + helper.
                         "signBecomeLockKeeper" -> Mobilecore.signBecomeLockKeeper(
                             call.argument<String>("words")!!, call.argument<String>("chainId")!!,

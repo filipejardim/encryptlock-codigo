@@ -38,33 +38,27 @@ class PcLockKeeperCard extends StatelessWidget {
     final locale = Localizations.localeOf(context).toString();
     final need = state.pcMinGuarantee;
     final balance = state.status?.balance ?? BigInt.zero;
-    final messenger = ScaffoldMessenger.of(context);
-    // The guarantee plus a little for the fee.
-    if (balance < need + BigInt.from(1000000)) {
-      messenger.showSnackBar(SnackBar(content: Text(t.pcLkNeedMore(formatLock(need + BigInt.from(1000000), locale)))));
+    // The guarantee plus a little for the fee; a wallet that is already a
+    // LockKeeper (its guarantee already in) only moves to this computer.
+    if (!(state.status?.isLockKeeper ?? false) && balance < need + BigInt.from(1000000)) {
+      state.setPcNote(t.pcLkNeedMore(formatLock(need + BigInt.from(1000000), locale)), bad: true);
       return;
     }
+    state.setPcNote(null);
     if (!await confirmPassword(context) || !context.mounted) return;
     try {
       // Once: the security chip (Windows asks "Allow?").
       if (!PcLockKeeper.isSetUp && !PcLockKeeper.hasChipTicket) {
         if (!await confirmChipCheck(context)) return;
         final maker = await state.checkPcChip();
-        messenger.showSnackBar(SnackBar(content: Text(t.chipOk(maker))));
+        state.setPcNote('✅ ${t.chipOk(maker)}');
       }
       await state.becomePcLockKeeper();
     } on ChipProblem catch (e) {
-      messenger.showSnackBar(SnackBar(
-        duration: const Duration(seconds: 8),
-        content: Text(e.kind == ChipProblemKind.cancelled
-            ? t.chipCancelled
-            : e.detail.isEmpty
-                ? t.chipNotAccepted
-                : '${t.chipNotAccepted}\n(${e.detail})'),
-      ));
+      state.setPcNote(chipProblemText(t, e), bad: true);
     } catch (e) {
       final msg = e is ChainError ? e.log : '$e';
-      messenger.showSnackBar(SnackBar(content: Text(t.pcLkError(msg))));
+      state.setPcNote(t.pcLkError(msg), bad: true);
     }
   }
 
@@ -108,6 +102,7 @@ class PcLockKeeperCard extends StatelessWidget {
                 )
               else
                 NeonButton(label: t.pcLkButton, icon: Icons.memory, onPressed: () => _become(context)),
+              PcNote(state: state),
             ],
           ),
         ),
@@ -159,11 +154,18 @@ class PcLockKeeperCard extends StatelessWidget {
             // LockKeeper's owner (another wallet has nothing to prove).
             if (behind)
               const SizedBox.shrink()
-            else if (state.pcLockKeeperOn && r != null && !r.chip && (state.status?.isLockKeeper ?? false))
-              _Warning('⚠️ ${t.pcLkNoChip}', Brand.danger)
+            else if (state.pcLockKeeperOn && r != null && !r.chip && (state.status?.isLockKeeper ?? false)) ...[
+              _Warning('⚠️ ${t.pcLkNoChip}', Brand.danger),
+              // The network's checker gives this computer's chip again (a
+              // chip counts only while a LockKeeper works with it); the "I
+              // am on" program sends the new ticket by itself.
+              NeonButton(label: t.pcLkChipAgain, icon: Icons.memory, secondary: true, onPressed: () => _chipAgain(context)),
+              const SizedBox(height: 6),
+            ]
             else if (state.pcNotSeen)
               _Warning('⚠️ ${t.pcLkNotSeen}', Brand.danger),
             if (r != null) HoursLog(r),
+            PcNote(state: state),
           ],
         ),
       ),
@@ -235,6 +237,66 @@ class _Light extends StatelessWidget {
 }
 
 /// A short warning line on the card.
+/// What the chip check said, in words.
+String chipProblemText(AppLocalizations t, ChipProblem e) => e.kind == ChipProblemKind.cancelled
+    ? t.chipCancelled
+    : e.detail.isEmpty
+        ? t.chipNotAccepted
+        : '${t.chipNotAccepted}\n(${e.detail})';
+
+/// Checks this computer's chip again, for a LockKeeper whose chip the network
+/// has not confirmed.
+Future<void> _chipAgain(BuildContext context) async {
+  final t = AppLocalizations.of(context);
+  final state = AppScope.of(context);
+  if (!await confirmChipCheck(context)) return;
+  state.setPcNote(null);
+  try {
+    final maker = await state.checkPcChip();
+    state.setPcNote('✅ ${t.chipOk(maker)}');
+  } on ChipProblem catch (e) {
+    state.setPcNote(chipProblemText(t, e), bad: true);
+  } catch (e) {
+    state.setPcNote(t.pcLkError('$e'), bad: true);
+  }
+}
+
+/// The last result of the LockKeeper button or the chip check: it stays in
+/// the card until the owner closes it.
+class PcNote extends StatelessWidget {
+  const PcNote({super.key, required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final note = state.pcNote;
+    if (note == null) return const SizedBox.shrink();
+    final color = state.pcNoteBad ? Brand.danger : Brand.neonGreen;
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        border: Border.all(color: color.withValues(alpha: 0.7)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: SelectableText(note, style: TextStyle(color: color, height: 1.4, fontWeight: FontWeight.w600))),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            color: Brand.pearl,
+            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+            onPressed: () => state.setPcNote(null),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Warning extends StatelessWidget {
   const _Warning(this.text, this.color);
 

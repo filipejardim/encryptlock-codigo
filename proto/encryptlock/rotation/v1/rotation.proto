@@ -116,6 +116,11 @@ service Query {
   rpc Helper(QueryHelperRequest) returns (QueryHelperResponse) {
     option (google.api.http).get = "/encryptlock/rotation/v1/helper/{helper}";
   }
+  // Chip: the account a chip code serves and whether a LockKeeper is
+  // working with it now (the chip checker asks it).
+  rpc Chip(QueryChipRequest) returns (QueryChipResponse) {
+    option (google.api.http).get = "/encryptlock/rotation/v1/chip/{code}";
+  }
 }
 
 message QueryStatusRequest {
@@ -150,10 +155,30 @@ message QueryOverviewResponse {
   uint64 signing = 2;
   // seats: the most that can sign at once.
   uint64 seats = 3;
+  // online_keepers: the LockKeepers switched on now (lockvaloper1...), the
+  // ones that earn; those with a guarantee but off are not here.
+  repeated string online_keepers = 4;
+  // signing_keepers: those of online_keepers in the group signing the
+  // blocks now (the others are on, waiting for their turn).
+  repeated string signing_keepers = 5;
 }
 
 message QueryHelperRequest {
   string helper = 1;
+}
+
+message QueryChipRequest {
+  string code = 1;
+}
+
+message QueryChipResponse {
+  // account: the account the chip serves (empty: the chip serves none).
+  string account = 1;
+  // keeper: that account's LockKeeper (the account itself, or the one it
+  // is the helper of; empty if none).
+  string keeper = 2;
+  // working: that LockKeeper is in the set and switched on now.
+  bool working = 3;
 }
 
 message QueryHelperResponse {

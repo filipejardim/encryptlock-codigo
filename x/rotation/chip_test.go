@@ -6,9 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"testing"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"encryptlock/lockkeeper/protocol"
 	"encryptlock/lockkeeper/x/rotation/types"
 )
 
@@ -93,5 +95,49 @@ func TestAfterAStopOnlyRealComputersSign(t *testing.T) {
 	// Nobody on (start, or the network stood still): 1 and 2 have no chip.
 	if got := e.selectNow(t); len(got) != 1 || !got[0] {
 		t.Fatalf("group = %v, want only the computer with a chip", got)
+	}
+}
+
+// The chip checker asks whether a LockKeeper works with a chip: only one in
+// the set and switched on counts (founder, 26 Oct 2026).
+func TestChipQuerySaysWhetherALockKeeperWorksWithIt(t *testing.T) {
+	e := setup(t, 10, 10)
+	e.ctx = e.ctx.WithChainID("encryptlock-test")
+	pub, priv, _ := ed25519.GenerateKey(nil)
+	if err := e.k.InitGenesis(e.ctx, Genesis{ChipCheckers: [][]byte{pub}}); err != nil {
+		t.Fatal(err)
+	}
+	q := queryServer{k: e.k}
+	ask := func(code string) *types.QueryChipResponse {
+		t.Helper()
+		res, err := q.Chip(e.ctx, &types.QueryChipRequest{Code: code})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res
+	}
+	a := chipCode("chip A")
+	if res := ask(a); res.Account != "" || res.Working {
+		t.Fatalf("unused chip: %+v", res)
+	}
+	helper := sdk.AccAddress("helper______________")
+	if err := e.k.SetHelper(e.ctx, e.accs[0], helper); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.k.ProveChip(e.ctx, helper, a, ed25519.Sign(priv, TicketMessage("encryptlock-test", a, helper))); err != nil {
+		t.Fatal(err)
+	}
+	// Proven but never switched on: not working.
+	if res := ask(a); res.Account == "" || res.Keeper == "" || res.Working {
+		t.Fatalf("never switched on: %+v", res)
+	}
+	e.beat(t, 0)
+	if res := ask(a); !res.Working {
+		t.Fatalf("switched on: %+v", res)
+	}
+	// Off for longer than the online window: not working any more.
+	e.at(protocol.OnlineWindow + time.Minute)
+	if res := ask(a); res.Working {
+		t.Fatalf("switched off: %+v", res)
 	}
 }

@@ -464,10 +464,19 @@ func (s queryServer) Status(ctx context.Context, req *types.QueryStatusRequest) 
 
 func (s queryServer) Overview(ctx context.Context, _ *types.QueryOverviewRequest) (*types.QueryOverviewResponse, error) {
 	var online, signing uint64
+	var keepers, signers []string
 	t := now(ctx)
-	err := s.k.Online.Walk(ctx, nil, func(_ sdk.ValAddress, o types.Online) (bool, error) {
+	err := s.k.Online.Walk(ctx, nil, func(v sdk.ValAddress, o types.Online) (bool, error) {
 		if t-o.Last <= int64(protocol.OnlineWindow.Seconds()) {
 			online++
+			keepers = append(keepers, v.String())
+			if val, err := s.k.staking.GetValidator(ctx, v); err == nil {
+				if cons, err := val.GetConsAddr(); err == nil {
+					if in, _ := s.k.Committee.Has(ctx, cons); in {
+						signers = append(signers, v.String())
+					}
+				}
+			}
 		}
 		return false, nil
 	})
@@ -481,5 +490,5 @@ func (s queryServer) Overview(ctx context.Context, _ *types.QueryOverviewRequest
 	if err != nil {
 		return nil, err
 	}
-	return &types.QueryOverviewResponse{Online: online, Signing: signing, Seats: uint64(s.k.Seats)}, nil
+	return &types.QueryOverviewResponse{Online: online, Signing: signing, Seats: uint64(s.k.Seats), OnlineKeepers: keepers, SigningKeepers: signers}, nil
 }

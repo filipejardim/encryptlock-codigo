@@ -56,6 +56,44 @@ func SignBecomeLockKeeper(words, chainID, accountNumber string, sequence int64, 
 	return tx, err
 }
 
+// SignMoveLockKeeper moves a wallet that is already a LockKeeper to this
+// computer (its guarantee stays where it is, nothing is paid but the fee):
+//   - names this computer's helper, so its "I am on" counts (the old
+//     computer's helper stops counting);
+//   - signs blocks with this computer's key consPubKey ("" keeps the key the
+//     LockKeeper has: the same computer again). The network allows one key
+//     change per 21 days and burns 0.01 LOCK for it.
+//
+// A guarantee put in from a computer whose chip does not work is never lost:
+// the wallet takes it to a computer that works (founder, 26 Oct 2026).
+func SignMoveLockKeeper(words, chainID, accountNumber string, sequence int64, consPubKey, helper string) (string, error) {
+	var raw []byte
+	if consPubKey != "" {
+		var err error
+		if raw, err = base64.StdEncoding.DecodeString(consPubKey); err != nil || len(raw) == 0 {
+			return "", errors.New("invalid block-signing key")
+		}
+	}
+	if !IsAddress(helper) {
+		return "", errors.New("invalid helper address")
+	}
+	var buildErr error
+	tx, err := signMsgs(words, chainID, accountNumber, sequence, func(from string) []sdk.Msg {
+		msgs := []sdk.Msg{&rotationtypes.MsgSetHelper{Keeper: from, Helper: helper}}
+		if raw != nil {
+			acc, _ := sdk.AccAddressFromBech32(from)
+			rotate, err := stakingtypes.NewMsgRotateConsPubKey(sdk.ValAddress(acc).String(), &mldsa65.PubKey{Key: raw})
+			buildErr = err
+			msgs = append([]sdk.Msg{rotate}, msgs...)
+		}
+		return msgs
+	})
+	if buildErr != nil {
+		return "", buildErr
+	}
+	return tx, err
+}
+
 // SignHeartbeat is "I am on", signed by the helper account of a LockKeeper
 // (its words stay on the computer). Free.
 func SignHeartbeat(helperWords, chainID, accountNumber string, sequence int64) (string, error) {

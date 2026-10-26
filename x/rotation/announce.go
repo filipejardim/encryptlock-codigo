@@ -11,6 +11,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"encryptlock/lockkeeper/protocol"
 	"encryptlock/lockkeeper/x/rotation/types"
 )
 
@@ -107,5 +108,40 @@ func (s queryServer) Helper(ctx context.Context, req *types.QueryHelperRequest) 
 			return nil, err
 		}
 	}
+	return res, nil
+}
+
+func (s queryServer) Chip(ctx context.Context, req *types.QueryChipRequest) (*types.QueryChipResponse, error) {
+	owner, err := s.k.ChipUsed.Get(ctx, req.Code)
+	if errors.Is(err, collections.ErrNotFound) {
+		return &types.QueryChipResponse{}, nil
+	} else if err != nil {
+		return nil, err
+	}
+	res := &types.QueryChipResponse{}
+	if res.Account, err = s.k.addressCodec.BytesToString(owner); err != nil {
+		return nil, err
+	}
+	keeper := owner
+	if k, err := s.k.Helpers.Get(ctx, owner); err == nil {
+		keeper = sdk.AccAddress(k)
+	} else if !errors.Is(err, collections.ErrNotFound) {
+		return nil, err
+	}
+	v, err := s.k.staking.GetValidator(ctx, sdk.ValAddress(keeper))
+	if err != nil {
+		// The account is no LockKeeper (never was, or it left for good).
+		return res, nil
+	}
+	if res.Keeper, err = s.k.addressCodec.BytesToString(keeper); err != nil {
+		return nil, err
+	}
+	// Working: in the set and its "I am on" recent. A LockKeeper that never
+	// switched on, or is off, does not hold the chip (founder, 26 Oct 2026).
+	on, err := s.k.Online.Get(ctx, sdk.ValAddress(keeper))
+	if err != nil && !errors.Is(err, collections.ErrNotFound) {
+		return nil, err
+	}
+	res.Working = v.IsBonded() && !v.IsJailed() && err == nil && now(ctx)-on.Last <= int64(protocol.OnlineWindow.Seconds())
 	return res, nil
 }

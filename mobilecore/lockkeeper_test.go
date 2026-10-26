@@ -57,3 +57,19 @@ func TestBecomeLockKeeperAndHeartbeat(t *testing.T) {
 		t.Fatalf("heartbeat = %+v", tx.GetMsgs())
 	}
 }
+
+func TestSignMoveLockKeeper(t *testing.T) {
+	words, _ := NewMnemonic()
+	helperWords, _ := NewMnemonic()
+	helper, _ := Address(helperWords)
+	key := base64.StdEncoding.EncodeToString(make([]byte, 1952))
+	if _, err := SignMoveLockKeeper(words, "encryptlock-test", "1", 0, key, helper); err != nil {
+		t.Fatalf("move with a new key: %v", err)
+	}
+	if _, err := SignMoveLockKeeper(words, "encryptlock-test", "1", 0, "", helper); err != nil {
+		t.Fatalf("move keeping the key: %v", err)
+	}
+	if _, err := SignMoveLockKeeper(words, "encryptlock-test", "1", 0, "", "not-an-address"); err == nil {
+		t.Fatal("bad helper accepted")
+	}
+}

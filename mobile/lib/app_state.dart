@@ -515,6 +515,18 @@ class AppState extends ChangeNotifier {
   /// Preparing / switching on right now.
   bool pcLockKeeperBusy = false;
 
+  /// The last result of the LockKeeper button or of the chip check, shown in
+  /// the LockKeeper card until the owner closes it (a message at the bottom
+  /// went away before people could read it: founder, 26 Oct 2026).
+  String? pcNote;
+  bool pcNoteBad = false;
+
+  void setPcNote(String? text, {bool bad = false}) {
+    pcNote = text;
+    pcNoteBad = bad;
+    notifyListeners();
+  }
+
   /// What the network says about this wallet as a LockKeeper.
   LockKeeperRotation? rotation;
 
@@ -645,12 +657,7 @@ class AppState extends ChangeNotifier {
       final helper = await core.address(helperWords);
       final units = pcMinGuarantee;
       if (!PcLockKeeper.isSetUp) {
-        await _submit((w, c, a, s) => core.sign('signBecomeLockKeeper', w, c, a, s, {
-          'consPubKey': consKey,
-          'units': units.toInt(),
-          'moniker': 'pc',
-          'helper': helper,
-        }));
+        await _becomeOrMove(consKey: consKey, helper: helper, units: units);
         PcLockKeeper.markSetUp();
       }
       await setPcLockKeeperOn(true);
@@ -687,13 +694,32 @@ class AppState extends ChangeNotifier {
   Future<void> linkComputer(String helper) async {
     final info = await LockKeeperClient(lockKeeperUrl).helper(helper);
     if (info.pubKey == null) throw const ChainError('no key');
-    final units = pcMinGuarantee;
-    await _submit((w, c, a, s) => core.sign('signBecomeLockKeeper', w, c, a, s, {
-      'consPubKey': info.pubKey!,
-      'units': units.toInt(),
-      'moniker': 'pc',
-      'helper': helper,
-    }));
+    await _becomeOrMove(consKey: info.pubKey!, helper: helper, units: pcMinGuarantee);
+  }
+
+  /// Makes this wallet a LockKeeper on the computer with block-signing key
+  /// [consKey] and helper [helper]; a wallet that already is one (its
+  /// guarantee already in, e.g. from a computer whose chip did not work) is
+  /// moved to this computer instead, keeping its guarantee (founder, 26 Oct
+  /// 2026: the wallet can always go to a computer that works).
+  Future<void> _becomeOrMove({required String consKey, required String helper, required BigInt units}) async {
+    final addr = address;
+    if (addr == null) throw StateError('locked');
+    _validatorAddress ??= await core.validatorAddress(addr);
+    final current = await LockKeeperClient(lockKeeperUrl).keeperKey(_validatorAddress!);
+    if (current == null) {
+      await _submit((w, c, a, s) => core.sign('signBecomeLockKeeper', w, c, a, s, {
+        'consPubKey': consKey,
+        'units': units.toInt(),
+        'moniker': 'pc',
+        'helper': helper,
+      }));
+    } else {
+      await _submit((w, c, a, s) => core.sign('signMoveLockKeeper', w, c, a, s, {
+        'consPubKey': current == consKey ? '' : consKey,
+        'helper': helper,
+      }));
+    }
   }
 
   /// Switches this PC's LockKeeper on or off (off costs nothing).

@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -96,6 +98,60 @@ type Checker struct {
 	// the reason, so a real chip that fails can be fixed without asking its
 	// owner for anything ("": not kept).
 	refusedDir string
+
+	// Owner tells which account a chip code serves on the network and
+	// whether a LockKeeper is working with it now (nil: every chip gets its
+	// first code, as before).
+	Owner func(code string) (account string, working bool, err error)
+}
+
+// maxCodes: the most codes one chip can get (one more each time it changes
+// account while no LockKeeper works with it).
+const maxCodes = 64
+
+// codeFor is a chip's n-th code: the first is Chip.Code; a new one when the
+// chip changes account (the network keeps each code for the account that
+// proved it first, for ever).
+func codeFor(ch Chip, n int) string {
+	if n == 0 {
+		return ch.Code()
+	}
+	h := sha256.New()
+	h.Write(bytes.TrimLeft(ch.Modulus, "\x00"))
+	h.Write([]byte("encryptlock-chip-move"))
+	h.Write([]byte{byte(n)})
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// freeCode is the code the chip proves for account: one it already proved
+// for it, else the first one nobody proved. A chip counts only while a
+// LockKeeper works with it (founder, 26 Oct 2026): if one does, for another
+// account, the chip is refused; one that never switched on, or is off, does
+// not hold it (a person who changed wallet can use the same computer).
+func (c *Checker) freeCode(ch Chip, account string) (string, error) {
+	if c.Owner == nil {
+		return ch.Code(), nil
+	}
+	busy := ""
+	for n := 0; n < maxCodes; n++ {
+		code := codeFor(ch, n)
+		owner, working, err := c.Owner(code)
+		if err != nil {
+			return "", err
+		}
+		switch {
+		case owner == account:
+			return code, nil
+		case owner == "":
+			if busy != "" {
+				return "", fmt.Errorf("this computer is already working as the LockKeeper of another account (%s…): switch that one off first", busy[:6])
+			}
+			return code, nil
+		case working:
+			busy = owner
+		}
+	}
+	return "", errors.New("this chip changed account too many times")
 }
 
 type session struct {
@@ -141,6 +197,10 @@ func (c *Checker) Ask(req QuestionRequest, origin string) (*QuestionResponse, er
 		c.keepRefused(ch, err)
 		return nil, err
 	}
+	code, err := c.freeCode(ch, req.Account)
+	if err != nil {
+		return nil, err
+	}
 	want, q, err := Ask(ch, req.AK)
 	if err != nil {
 		return nil, err
@@ -159,7 +219,7 @@ func (c *Checker) Ask(req QuestionRequest, origin string) (*QuestionResponse, er
 	if len(c.sessions) >= maxSessions {
 		return nil, errors.New("too many computers at once, try again in a few minutes")
 	}
-	c.sessions[hex.EncodeToString(id)] = session{want: want, code: ch.Code(), maker: maker, account: account, at: time.Now(), origin: origin}
+	c.sessions[hex.EncodeToString(id)] = session{want: want, code: code, maker: maker, account: account, at: time.Now(), origin: origin}
 	return &QuestionResponse{Session: hex.EncodeToString(id), Question: *q}, nil
 }
 

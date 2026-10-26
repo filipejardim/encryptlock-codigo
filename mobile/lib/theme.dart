@@ -32,6 +32,9 @@ class Brand {
   static const pearl = Color(0xFFF4F1E8);
   static const danger = Color(0xFFFF5C6C);
 
+  /// A LockKeeper with a guarantee but switched off.
+  static const orange = Color(0xFFFFA94D);
+
   /// Top bar: dark chip colours, left to right.
   static const barGradient = LinearGradient(colors: [barStart, barEnd]);
 

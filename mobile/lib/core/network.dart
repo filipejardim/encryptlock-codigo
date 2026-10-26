@@ -168,22 +168,62 @@ class RecoveryStatus {
 
 /// A LockKeeper as the public sees it.
 class KeeperInfo {
-  const KeeperInfo(this.name, this.tokens, this.jailed);
+  const KeeperInfo(this.name, this.tokens, this.jailed, {this.online = true, this.signing = true, this.operator = ''});
 
   final String name;
   final BigInt tokens;
   final bool jailed;
+
+  /// Switched on now (its "I am on" is recent); off, it earns nothing.
+  final bool online;
+
+  /// In the group signing the blocks now (on and not signing: waiting for
+  /// its turn).
+  final bool signing;
+
+  /// Its lockvaloper1... address.
+  final String operator;
+}
+
+const _bech = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+
+int _bechPolymod(List<int> values) {
+  const gen = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+  var chk = 1;
+  for (final v in values) {
+    final b = chk >> 25;
+    chk = ((chk & 0x1ffffff) << 5) ^ v;
+    for (var i = 0; i < 5; i++) {
+      if ((b >> i) & 1 == 1) chk ^= gen[i];
+    }
+  }
+  return chk;
+}
+
+/// The account (lock1...) of a LockKeeper's operator address
+/// (lockvaloper1...): the same key with the account prefix. Null if it is
+/// not a valid address.
+String? accountOfOperator(String operator) {
+  final sep = operator.lastIndexOf('1');
+  if (!operator.startsWith('lockvaloper1') || operator.length < sep + 8) return null;
+  final data = [for (final ch in operator.substring(sep + 1, operator.length - 6).split('')) _bech.indexOf(ch)];
+  if (data.contains(-1)) return null;
+  const hrp = 'lock';
+  final expand = [for (final c in hrp.codeUnits) c >> 5, 0, for (final c in hrp.codeUnits) c & 31];
+  final mod = _bechPolymod([...expand, ...data, 0, 0, 0, 0, 0, 0]) ^ 1;
+  final sum = [for (var i = 0; i < 6; i++) (mod >> (5 * (5 - i))) & 31];
+  return '${hrp}1${[...data, ...sum].map((d) => _bech[d]).join()}';
 }
 
 /// Each LockKeeper's share of the new LOCK (0 to 1), as the network pays it
 /// for an hour in which they all stay as they are now: by guarantee, nothing
-/// for one that is off (jailed), and from 20 on no one above 5% (the same
+/// for one that is off (switched off, or jailed), and from 20 on no one above 5% (the same
 /// rule as x/powercap). The guarantee share alone would show the founder's
 /// computer at ~76% with 20 on, when it earns 5% (founder's question, 21 Oct
 /// 2026).
 List<double> earningShares(List<KeeperInfo> keepers) {
   const minKeepers = 20, divisor = 20;
-  final powers = [for (final k in keepers) k.jailed ? BigInt.zero : k.tokens];
+  final powers = [for (final k in keepers) k.jailed || !k.online ? BigInt.zero : k.tokens];
   final on = [for (final p in powers) if (p > BigInt.zero) p];
   var capped = powers;
   if (on.length >= minKeepers) {
@@ -433,6 +473,14 @@ class LockKeeperClient {
     return (pubKey: key == null || key.isEmpty ? null : key, keeper: keeper == null || keeper.isEmpty ? null : keeper);
   }
 
+  /// The block-signing key (base64) of the LockKeeper [validatorAddress];
+  /// null when this wallet is no LockKeeper.
+  Future<String?> keeperKey(String validatorAddress) async {
+    final r = await _optional('/cosmos/staking/v1beta1/validators/$validatorAddress');
+    final key = ((r?['validator'] as Map<String, dynamic>?)?['consensus_pubkey'] as Map<String, dynamic>?)?['key'];
+    return key is String && key.isNotEmpty ? key : null;
+  }
+
   /// This LockKeeper's place in the rotation: on, signing, time on.
   Future<LockKeeperRotation> rotation(String address) async {
     final r = await _optional('/encryptlock/rotation/v1/status/$address');
@@ -452,8 +500,9 @@ class LockKeeperClient {
     final res = await Future.wait([
       _get('/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED'),
       _get('/cosmos/bank/v1beta1/supply/by_denom?denom=lockunit'),
+      _optional('/encryptlock/rotation/v1/overview'),
     ]);
-    final both = {'validators': res[0], 'supply': res[1]};
+    final both = {'validators': res[0], 'supply': res[1], 'overview': res[2]};
     // Kept for when no LockKeeper can be reached.
     await LastAnswers.put('network', both);
     return parseNetwork(both);
@@ -485,12 +534,21 @@ class LockKeeperClient {
 
   static NetworkInfo parseNetwork(Map<String, dynamic> both) {
     final res = [both['validators'] as Map<String, dynamic>?, both['supply'] as Map<String, dynamic>?];
+    // Every LockKeeper with a guarantee is listed and counted; the ones
+    // switched off get an orange light and earn nothing (founder, 26 Oct
+    // 2026). A LockKeeper too old to give the list of those on: all on.
+    final overview = both['overview'] as Map<String, dynamic>?;
+    final on = (overview?['online_keepers'] as List<dynamic>?)?.toSet();
+    final signers = (overview?['signing_keepers'] as List<dynamic>?)?.toSet();
     final keepers = [
       for (final v in (res[0]?['validators'] as List<dynamic>? ?? const []))
         KeeperInfo(
           ((v as Map<String, dynamic>)['description'] as Map<String, dynamic>?)?['moniker'] as String? ?? '—',
           BigInt.parse('${v['tokens'] ?? 0}'),
           v['jailed'] == true,
+          online: on == null || on.contains(v['operator_address']),
+          signing: (signers ?? on) == null || (signers ?? on)!.contains(v['operator_address']),
+          operator: '${v['operator_address'] ?? ''}',
         ),
     ]..sort((a, b) => b.tokens.compareTo(a.tokens));
     final amount = (res[1]?['amount'] as Map<String, dynamic>?)?['amount'];

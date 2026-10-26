@@ -7,6 +7,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -640,6 +641,13 @@ func (app *LockKeeperApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config
 		panic(err)
 	}
 	if checker != nil {
+		checker.Owner = func(code string) (string, bool, error) {
+			res, err := rotationtypes.NewQueryClient(clientCtx).Chip(context.Background(), &rotationtypes.QueryChipRequest{Code: code})
+			if err != nil {
+				return "", false, err
+			}
+			return res.Account, res.Working, nil
+		}
 		h := checker.Handler()
 		apiSvr.Router.Handle(chip.PathQuestion, h)
 		apiSvr.Router.Handle(chip.PathAnswer, h)

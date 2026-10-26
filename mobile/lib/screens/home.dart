@@ -17,6 +17,7 @@ import '../core/startup.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/brand.dart';
+import '../widgets/network_map.dart';
 import '../widgets/coin_carousel.dart';
 import '../widgets/history_card.dart';
 import '../widgets/pending_list.dart';
@@ -527,6 +528,8 @@ class _WalletTabState extends State<_WalletTab> {
       // USDC and POL: what is needed here to buy LOCK.
       if (coin.onPolygon) ...[const SizedBox(height: 14), const HowToBuyCard()],
       const WhyCard(),
+      // The network map, for everyone, right under "Why" (founder, 25-26 Oct).
+      if (coin.isLock) const NetworkMapCard(),
     ];
     final tail = <Widget>[
       // Transfers to accept come first: they go back after 1 hour.
